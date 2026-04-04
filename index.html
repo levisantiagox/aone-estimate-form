@@ -604,9 +604,34 @@
         <div class="step-subtitle">Where is the job located?</div>
 
         <div class="field-group">
-          <label>Property Address <span class="required">*</span></label>
-          <input type="text" id="propertyAddress" name="propertyAddress" placeholder="Start typing your address..." required autocomplete="street-address">
-          <div class="error-msg" id="propertyAddressError">Please enter the property address</div>
+          <label>Street Address <span class="required">*</span></label>
+          <input type="text" id="streetAddress" name="streetAddress" placeholder="e.g. 12 Smith Street" required autocomplete="street-address">
+          <div class="error-msg" id="streetAddressError">Please enter the street address</div>
+        </div>
+        <div class="field-group">
+          <label>Suburb <span class="required">*</span></label>
+          <input type="text" id="suburb" name="suburb" placeholder="e.g. Robina" required>
+          <div class="error-msg" id="suburbError">Please enter the suburb</div>
+        </div>
+        <div class="field-group">
+          <label>City <span class="required">*</span></label>
+          <input type="text" id="city" name="city" placeholder="e.g. Gold Coast" required>
+          <div class="error-msg" id="cityError">Please enter the city</div>
+        </div>
+        <div class="field-group">
+          <label>State <span class="required">*</span></label>
+          <select id="state" name="state" required>
+            <option value="">Select state...</option>
+            <option value="QLD">QLD</option>
+            <option value="NSW">NSW</option>
+            <option value="VIC">VIC</option>
+            <option value="SA">SA</option>
+            <option value="WA">WA</option>
+            <option value="TAS">TAS</option>
+            <option value="NT">NT</option>
+            <option value="ACT">ACT</option>
+          </select>
+          <div class="error-msg" id="stateError">Please select a state</div>
         </div>
         <div class="field-group">
           <label>Property Type <span class="required">*</span></label>
@@ -682,29 +707,19 @@
             <label>Fence Height <span class="required">*</span></label>
             <select id="fenceHeight" name="fenceHeight">
               <option value="">Select height...</option>
-              <option value="1.2m (4 foot)">1.2m (4 foot)</option>
-              <option value="1.5m (5 foot)">1.5m (5 foot)</option>
-              <option value="1.8m (6 foot) - Most common">1.8m (6 foot) - Most common</option>
-              <option value="2.1m (7 foot)">2.1m (7 foot)</option>
+              <option value="1.8m">1.8m</option>
+              <option value="2m">2m</option>
+              <option value="Other">Other</option>
               <option value="Not sure yet">Not sure yet</option>
             </select>
           </div>
           <div class="field-group">
-            <label>Approximate Fence Length <span class="required">*</span></label>
-            <select id="fenceLength" name="fenceLength">
-              <option value="">Select length...</option>
-              <option value="Under 10 metres">Under 10 metres</option>
-              <option value="10 - 20 metres">10 - 20 metres</option>
-              <option value="20 - 40 metres">20 - 40 metres</option>
-              <option value="40 - 60 metres">40 - 60 metres</option>
-              <option value="60 - 100 metres">60 - 100 metres</option>
-              <option value="100+ metres">100+ metres</option>
-              <option value="Not sure">Not sure</option>
-            </select>
+            <label>Approximate Total Fence Length (metres) <span class="required">*</span></label>
+            <input type="number" id="fenceLength" name="fenceLength" placeholder="e.g. 25" min="1" max="999">
           </div>
           <div class="field-group">
             <label>Removal of Existing Fence <span class="required">*</span></label>
-            <select id="fenceRemoval" name="fenceRemoval">
+            <select id="fenceRemoval" name="fenceRemoval" onchange="togglePartialRemoval()">
               <option value="">Select...</option>
               <option value="Yes, existing fence needs full removal">Yes, existing fence needs full removal</option>
               <option value="Yes, partial removal needed">Yes, partial removal needed</option>
@@ -712,42 +727,78 @@
               <option value="Not sure">Not sure</option>
             </select>
           </div>
+          <div class="field-group" id="partialRemovalField" style="display:none;">
+            <label>How many metres of partial removal? <span class="required">*</span></label>
+            <input type="number" id="partialRemovalMetres" name="partialRemovalMetres" placeholder="e.g. 10" min="1" max="999">
+          </div>
         </div>
 
         <!-- GATE conditional fields -->
         <div class="conditional-section" id="gateFields">
           <h3>Gate Details</h3>
+
           <div class="field-group">
-            <label>Gate Type <span class="required">*</span></label>
-            <select id="gateType" name="gateType">
-              <option value="">Select gate type...</option>
-              <option value="Pedestrian gate (single)">Pedestrian gate (single)</option>
-              <option value="Double gate">Double gate</option>
-              <option value="Sliding gate">Sliding gate</option>
-              <option value="Swing gate (automated)">Swing gate (automated)</option>
-              <option value="Electric / motorised gate">Electric / motorised gate</option>
-              <option value="Not sure yet">Not sure yet</option>
-            </select>
-          </div>
-          <div class="field-group">
-            <label>Gate Material <span class="required">*</span></label>
-            <select id="gateMaterial" name="gateMaterial">
-              <option value="">Select material...</option>
-              <option value="Colorbond">Colorbond</option>
-              <option value="Aluminium">Aluminium</option>
-              <option value="Timber">Timber</option>
-              <option value="Match my fence">Match my fence</option>
-              <option value="Not sure yet">Not sure yet</option>
-            </select>
-          </div>
-          <div class="field-group">
-            <label>Number of Gates <span class="required">*</span></label>
-            <select id="numberOfGates" name="numberOfGates">
+            <label>Do you need a side / pedestrian gate? <span class="required">*</span></label>
+            <select id="sideGate" name="sideGate" onchange="toggleSideGateOptions()">
               <option value="">Select...</option>
-              <option value="1">1</option>
-              <option value="2">2</option>
-              <option value="3+">3+</option>
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
             </select>
+          </div>
+          <div id="sideGateOptions" style="display:none;">
+            <div class="field-group">
+              <label>Side Gate Material <span class="required">*</span></label>
+              <select id="sideGateMaterial" name="sideGateMaterial">
+                <option value="">Select material...</option>
+                <option value="Colorbond">Colorbond</option>
+                <option value="Aluminium">Aluminium</option>
+                <option value="Timber">Timber</option>
+                <option value="Match my fence">Match my fence</option>
+                <option value="Not sure yet">Not sure yet</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label>Number of Side Gates <span class="required">*</span></label>
+              <select id="numberOfSideGates" name="numberOfSideGates">
+                <option value="">Select...</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3+">3+</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label>Do you need a driveway gate? <span class="required">*</span></label>
+            <select id="drivewayGate" name="drivewayGate" onchange="toggleDrivewayGateOptions()">
+              <option value="">Select...</option>
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+            </select>
+          </div>
+          <div id="drivewayGateOptions" style="display:none;">
+            <div class="field-group">
+              <label>Driveway Gate Type <span class="required">*</span></label>
+              <select id="drivewayGateType" name="drivewayGateType">
+                <option value="">Select type...</option>
+                <option value="Sliding gate">Sliding gate</option>
+                <option value="Swing gate (automated)">Swing gate (automated)</option>
+                <option value="Double swing gate">Double swing gate</option>
+                <option value="Electric / motorised gate">Electric / motorised gate</option>
+                <option value="Not sure yet">Not sure yet</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label>Driveway Gate Material <span class="required">*</span></label>
+              <select id="drivewayGateMaterial" name="drivewayGateMaterial">
+                <option value="">Select material...</option>
+                <option value="Colorbond">Colorbond</option>
+                <option value="Aluminium">Aluminium</option>
+                <option value="Timber">Timber</option>
+                <option value="Match my fence">Match my fence</option>
+                <option value="Not sure yet">Not sure yet</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -866,18 +917,6 @@
           </select>
           <div class="error-msg" id="siteAccessError">Please select site access level</div>
         </div>
-        <div class="field-group">
-          <label>Any Council or Boundary Considerations?</label>
-          <select id="councilBoundary" name="councilBoundary">
-            <option value="">Select...</option>
-            <option value="No">No</option>
-            <option value="Yes, boundary dispute">Yes, boundary dispute</option>
-            <option value="Yes, council approval needed">Yes, council approval needed</option>
-            <option value="Yes, heritage overlay or restrictions">Yes, heritage overlay or restrictions</option>
-            <option value="Not sure">Not sure</option>
-          </select>
-        </div>
-
         <div class="btn-row">
           <button type="button" class="btn btn-back" onclick="prevStep(4)">Back</button>
           <button type="button" class="btn btn-next" onclick="nextStep(4)">Next</button>
@@ -890,28 +929,17 @@
         <div class="step-subtitle">Just a couple more details and we'll get your estimate started.</div>
 
         <div class="field-group">
-          <label>When do you need this done? <span class="required">*</span></label>
+          <label>How soon are you looking at starting the project? <span class="required">*</span></label>
           <select id="timeline" name="timeline" required>
-            <option value="">Select timeline...</option>
-            <option value="ASAP">ASAP</option>
+            <option value="">Select...</option>
             <option value="Within 2 weeks">Within 2 weeks</option>
+            <option value="Within a month">Within a month</option>
             <option value="Within 1-2 months">Within 1-2 months</option>
             <option value="3+ months">3+ months</option>
-            <option value="Just exploring options">Just exploring options</option>
           </select>
           <div class="error-msg" id="timelineError">Please select a timeline</div>
         </div>
-        <div class="field-group">
-          <label>How did you hear about us?</label>
-          <select id="leadSource" name="leadSource">
-            <option value="">Select...</option>
-            <option value="Google search">Google search</option>
-            <option value="Facebook / Instagram">Facebook / Instagram</option>
-            <option value="Recommendation from a friend">Recommendation from a friend</option>
-            <option value="Seen our work in the area">Seen our work in the area</option>
-            <option value="Other">Other</option>
-          </select>
-        </div>
+        <input type="hidden" id="leadSource" name="leadSource" value="">
         <div class="field-group">
           <label>Upload Photos</label>
           <div class="file-upload-area" id="uploadArea" onclick="document.getElementById('photoUpload').click()">
@@ -965,9 +993,26 @@
   };
 
   // ===========================
+  // AUTO-CAPTURE LEAD SOURCE (referrer / UTM)
+  // ===========================
+  var params = new URLSearchParams(window.location.search);
+  var autoSource = params.get('utm_source') || params.get('utm_medium') || '';
+  if (!autoSource && document.referrer) {
+    try {
+      var ref = new URL(document.referrer).hostname;
+      if (ref.indexOf('google') !== -1) autoSource = 'Google search';
+      else if (ref.indexOf('facebook') !== -1 || ref.indexOf('instagram') !== -1 || ref.indexOf('fbclid') !== -1) autoSource = 'Facebook / Instagram';
+      else if (ref.indexOf('bing') !== -1) autoSource = 'Bing search';
+      else if (ref && ref !== window.location.hostname) autoSource = ref;
+    } catch(e) {}
+  }
+  if (autoSource) {
+    document.getElementById('leadSource').value = autoSource;
+  }
+
+  // ===========================
   // URL PARAMETER PRE-SELECTION
   // ===========================
-  const params = new URLSearchParams(window.location.search);
 
   // ?service=fence | gate | pool | shower
   const preService = params.get('service');
@@ -1089,7 +1134,10 @@
     }
 
     if (stepNum === 2) {
-      if (!val('propertyAddress')) { showError('propertyAddress'); valid = false; }
+      if (!val('streetAddress')) { showError('streetAddress'); valid = false; }
+      if (!val('suburb')) { showError('suburb'); valid = false; }
+      if (!val('city')) { showError('city'); valid = false; }
+      if (!val('state')) { showError('state'); valid = false; }
       if (!val('propertyType')) { showError('propertyType'); valid = false; }
       if (!val('propertyOwner')) { showError('propertyOwner'); valid = false; }
     }
@@ -1106,9 +1154,18 @@
         });
       }
       if (services.includes('New gate installation')) {
-        ['gateType','gateMaterial','numberOfGates'].forEach(function(f) {
-          if (!val(f)) { highlightField(f); valid = false; }
-        });
+        if (!val('sideGate')) { highlightField('sideGate'); valid = false; }
+        if (!val('drivewayGate')) { highlightField('drivewayGate'); valid = false; }
+        if (gv('sideGate') === 'Yes') {
+          ['sideGateMaterial','numberOfSideGates'].forEach(function(f) {
+            if (!val(f)) { highlightField(f); valid = false; }
+          });
+        }
+        if (gv('drivewayGate') === 'Yes') {
+          ['drivewayGateType','drivewayGateMaterial'].forEach(function(f) {
+            if (!val(f)) { highlightField(f); valid = false; }
+          });
+        }
       }
       if (services.includes('Pool fencing (glass)')) {
         ['poolFenceType','poolFenceLength','poolStatus','councilCompliance'].forEach(function(f) {
@@ -1188,10 +1245,45 @@
       } else {
         section.classList.remove('visible');
         section.querySelectorAll('select').forEach(function(sel) { sel.value = ''; });
+        section.querySelectorAll('input[type="number"]').forEach(function(inp) { inp.value = ''; });
       }
     }
     updateProgressBar();
   }
+
+  // Partial removal conditional
+  window.togglePartialRemoval = function() {
+    var field = document.getElementById('partialRemovalField');
+    var val = document.getElementById('fenceRemoval').value;
+    if (val === 'Yes, partial removal needed') {
+      field.style.display = 'block';
+    } else {
+      field.style.display = 'none';
+      document.getElementById('partialRemovalMetres').value = '';
+    }
+  };
+
+  // Side gate conditional
+  window.toggleSideGateOptions = function() {
+    var opts = document.getElementById('sideGateOptions');
+    if (document.getElementById('sideGate').value === 'Yes') {
+      opts.style.display = 'block';
+    } else {
+      opts.style.display = 'none';
+      opts.querySelectorAll('select').forEach(function(s) { s.value = ''; });
+    }
+  };
+
+  // Driveway gate conditional
+  window.toggleDrivewayGateOptions = function() {
+    var opts = document.getElementById('drivewayGateOptions');
+    if (document.getElementById('drivewayGate').value === 'Yes') {
+      opts.style.display = 'block';
+    } else {
+      opts.style.display = 'none';
+      opts.querySelectorAll('select').forEach(function(s) { s.value = ''; });
+    }
+  };
 
   // ===========================
   // FILE UPLOAD
@@ -1247,9 +1339,11 @@
     add('fence_height', data.fenceHeight);
     add('fence_length_range', data.fenceLength);
     add('existing_fence_removal', data.fenceRemoval);
-    add('gate_type', data.gateType);
-    add('gate_material', data.gateMaterial);
-    add('number_of_gates', data.numberOfGates);
+    add('gate_type', data.sideGate === 'Yes' ? 'Side/Pedestrian gate' : '');
+    add('gate_material', data.sideGateMaterial);
+    add('number_of_gates', data.numberOfSideGates);
+    add('driveway_gate_type', data.drivewayGateType);
+    add('driveway_gate_material', data.drivewayGateMaterial);
     add('pool_fence_type', data.poolFenceType);
     add('pool_fence_length_range', data.poolFenceLength);
     add('pool_status', data.poolStatus);
@@ -1259,7 +1353,7 @@
     add('number_of_shower_screens', data.numberOfShowerScreens);
     add('ground_conditions', data.groundConditions);
     add('site_access_difficulty', data.siteAccess);
-    add('council_boundary_considerations', data.councilBoundary);
+    add('partial_removal_metres', data.partialRemovalMetres);
     add('project_timeline', data.timeline);
     add('lead_source', data.leadSource);
     add('additional_notes', data.additionalNotes);
@@ -1275,7 +1369,11 @@
       fullName: gv('fullName'),
       phone: gv('phone'),
       email: gv('email'),
-      propertyAddress: gv('propertyAddress'),
+      streetAddress: gv('streetAddress'),
+      suburb: gv('suburb'),
+      city: gv('city'),
+      state: gv('state'),
+      propertyAddress: gv('streetAddress') + ', ' + gv('suburb') + ', ' + gv('city') + ' ' + gv('state'),
       propertyType: gv('propertyType'),
       propertyOwner: gv('propertyOwner'),
       serviceTypes: services,
@@ -1289,11 +1387,21 @@
       data.fenceHeight = gv('fenceHeight');
       data.fenceLength = gv('fenceLength');
       data.fenceRemoval = gv('fenceRemoval');
+      if (data.fenceRemoval === 'Yes, partial removal needed') {
+        data.partialRemovalMetres = gv('partialRemovalMetres');
+      }
     }
     if (services.indexOf('New gate installation') !== -1) {
-      data.gateType = gv('gateType');
-      data.gateMaterial = gv('gateMaterial');
-      data.numberOfGates = gv('numberOfGates');
+      data.sideGate = gv('sideGate');
+      if (data.sideGate === 'Yes') {
+        data.sideGateMaterial = gv('sideGateMaterial');
+        data.numberOfSideGates = gv('numberOfSideGates');
+      }
+      data.drivewayGate = gv('drivewayGate');
+      if (data.drivewayGate === 'Yes') {
+        data.drivewayGateType = gv('drivewayGateType');
+        data.drivewayGateMaterial = gv('drivewayGateMaterial');
+      }
     }
     if (services.indexOf('Pool fencing (glass)') !== -1) {
       data.poolFenceType = gv('poolFenceType');
@@ -1309,7 +1417,6 @@
     if (getVisibleSteps().indexOf(4) !== -1) {
       data.groundConditions = gv('groundConditions');
       data.siteAccess = gv('siteAccess');
-      data.councilBoundary = gv('councilBoundary');
     }
 
     return data;
@@ -1342,11 +1449,10 @@
 
     // Determine tags
     var tempMap = {
-      'ASAP': 'Hot Lead',
-      'Within 2 weeks': 'Warm Lead',
+      'Within 2 weeks': 'Hot Lead',
+      'Within a month': 'Warm Lead',
       'Within 1-2 months': 'Nurture',
-      '3+ months': 'Long-Term Nurture',
-      'Just exploring options': 'Long-Term Nurture'
+      '3+ months': 'Long-Term Nurture'
     };
     var tags = ['Website Form - Complete', tempMap[data.timeline] || 'Nurture'];
     if (data.leadSource) {
@@ -1373,40 +1479,12 @@
     document.querySelector('.form-wrapper').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  // ===========================
-  // GOOGLE PLACES AUTOCOMPLETE
-  // ===========================
-  function initAutocomplete() {
-    if (typeof google !== 'undefined' && google.maps && google.maps.places) {
-      var input = document.getElementById('propertyAddress');
-      var autocomplete = new google.maps.places.Autocomplete(input, {
-        componentRestrictions: { country: 'au' },
-        types: ['address']
-      });
-      autocomplete.addListener('place_changed', function() {
-        var place = autocomplete.getPlace();
-        if (place && place.formatted_address) {
-          input.value = place.formatted_address;
-        }
-      });
-    }
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initAutocomplete);
-  } else {
-    initAutocomplete();
-  }
-  window.initGooglePlaces = initAutocomplete;
-
   // Init
   updateProgressBar();
 
 })();
 </script>
 
-<!-- Optional: Add Google Places API. Replace YOUR_API_KEY with the actual key. -->
-<!-- <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places&callback=initGooglePlaces" async defer></script> -->
 
 </body>
 </html>
