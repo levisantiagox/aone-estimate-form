@@ -1445,15 +1445,23 @@ fbq('track', 'PageView');
 
     var d=collectFormData(),sp=document.getElementById('spinner');sp.classList.add('active');
 
-    // reCAPTCHA v3
-    grecaptcha.ready(function(){
-      grecaptcha.execute('6LdyYaYsAAAAAA0NJHcOGoogfn_9BzP6cDRw-mrw',{action:'submit'}).then(function(token){
-        d.recaptchaToken = token;
+    // reCAPTCHA v3 (non-blocking — submits even if reCAPTCHA fails)
+    try {
+      if (typeof grecaptcha !== 'undefined' && grecaptcha.execute) {
+        grecaptcha.ready(function(){
+          grecaptcha.execute('6LdyYaYsAAAAAA0NJHcOGoogfn_9BzP6cDRw-mrw',{action:'submit'}).then(function(token){
+            d.recaptchaToken = token;
+            processSubmission(d,sp);
+          }).catch(function(){
+            processSubmission(d,sp);
+          });
+        });
+      } else {
         processSubmission(d,sp);
-      }).catch(function(){
-        processSubmission(d,sp);
-      });
-    });
+      }
+    } catch(e) {
+      processSubmission(d,sp);
+    }
   };
 
   function processSubmission(d,sp){
