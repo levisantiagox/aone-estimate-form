@@ -1086,11 +1086,21 @@
 (function() {
   'use strict';
 
-  // === WEBHOOKS ===
-  var WEBHOOKS = {
-    partial: 'https://n8n-lsg.nwd-server.dev/webhook/aone-partial',
-    submit: 'https://n8n-lsg.nwd-server.dev/webhook/aone-submit'
+  // === GHL DIRECT API ===
+  var GHL = {
+    base: 'https://services.leadconnectorhq.com',
+    key: 'pit-0a7aa461-4066-4173-9946-6cc33f7290de',
+    locationId: '9H8ikOJT1S3b1d5ETdIK',
+    pipelineId: 'M8uFU74BGphAKFVw6VFp',
+    stageId: '27556b70-1712-483b-a0b5-8402d7d8c325'
   };
+  function ghlPost(endpoint, body) {
+    return fetch(GHL.base + endpoint, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + GHL.key, 'Version': '2021-07-28', 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(function(r) { return r.json(); });
+  }
 
   // === AUTO LEAD SOURCE ===
   var params = new URLSearchParams(window.location.search);
@@ -1354,7 +1364,17 @@
 
   // === PARTIAL CAPTURE ===
   function firePartialCapture(){
-    fetch(WEBHOOKS.partial,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fullName:gv('fullName'),phone:gv('phone'),email:gv('email')})}).catch(function(){});
+    var parts = gv('fullName').split(' ');
+    ghlPost('/contacts/upsert', {
+      locationId: GHL.locationId,
+      firstName: parts[0] || '',
+      lastName: parts.slice(1).join(' ') || '',
+      name: gv('fullName'),
+      phone: gv('phone'),
+      email: gv('email'),
+      tags: ['Website Form - Partial'],
+      source: 'Website Estimate Form'
+    }).catch(function(){});
   }
 
   // === SUBMIT ===
@@ -1364,9 +1384,64 @@
     var tm={'Within 2 weeks':'Hot Lead','Within a month':'Warm Lead','Within 1-2 months':'Nurture','3+ months':'Long-Term Nurture'};
     var tags=['Website Form - Complete',tm[d.timeline]||'Nurture'];
     if(d.leadSource)tags.push('Source - '+d.leadSource);
-    d.tags=tags;
-    fetch(WEBHOOKS.submit,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)})
-    .then(function(){showConf(d.fullName);}).catch(function(){showConf(d.fullName);}).finally(function(){sp.classList.remove('active');});
+
+    var parts = d.fullName.split(' ');
+    var customFields = [];
+    function cf(k,v){if(v)customFields.push({key:k,field_value:v});}
+    cf('property_type',d.propertyType);
+    cf('property_owner_status',d.propertyOwner);
+    cf('service_types_requested',d.serviceTypes.join(', '));
+    cf('fence_material',d.fenceMaterial);
+    cf('fence_height',d.fenceHeight);
+    cf('fence_length_range',d.fenceLength);
+    cf('existing_fence_removal',d.fenceRemoval);
+    cf('partial_removal_metres',d.partialRemovalMetres);
+    cf('gate_type',d.sideGate==='Yes'?'Side/Pedestrian gate':'');
+    cf('gate_material',d.sideGateMaterial);
+    cf('number_of_gates',d.numberOfSideGates);
+    cf('driveway_gate_type',d.drivewayGateType);
+    cf('driveway_gate_material',d.drivewayGateMaterial);
+    cf('pool_fence_type',d.poolFenceType);
+    cf('pool_fence_length_range',d.poolFenceLength);
+    cf('pool_status',d.poolStatus);
+    cf('council_compliance_required',d.councilCompliance);
+    cf('shower_screen_type',d.showerScreenType);
+    cf('shower_screen_configuration',d.showerConfig);
+    cf('number_of_shower_screens',d.numberOfShowerScreens);
+    cf('ground_conditions',d.groundConditions);
+    cf('site_access_difficulty',d.siteAccess);
+    cf('project_timeline',d.timeline);
+    cf('lead_source',d.leadSource);
+    cf('additional_notes',d.additionalNotes);
+
+    ghlPost('/contacts/upsert', {
+      locationId: GHL.locationId,
+      firstName: parts[0]||'',
+      lastName: parts.slice(1).join(' ')||'',
+      name: d.fullName,
+      phone: d.phone,
+      email: d.email,
+      address1: d.propertyAddress,
+      tags: tags,
+      source: d.leadSource||'Website Estimate Form',
+      customFields: customFields
+    })
+    .then(function(res){
+      var cid = res.contact && res.contact.id;
+      if(cid){
+        return ghlPost('/opportunities/',{
+          pipelineId:GHL.pipelineId,
+          locationId:GHL.locationId,
+          name:d.fullName+' - '+d.serviceTypes.join(', '),
+          pipelineStageId:GHL.stageId,
+          status:'open',
+          contactId:cid
+        });
+      }
+    })
+    .then(function(){showConf(d.fullName);})
+    .catch(function(){showConf(d.fullName);})
+    .finally(function(){sp.classList.remove('active');});
   };
   function showConf(name){
     document.getElementById('estimateForm').style.display='none';
