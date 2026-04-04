@@ -229,7 +229,7 @@ fbq('track', 'PageView');
     padding: 32px 28px;
     position: relative;
     overflow: hidden;
-    box-shadow: var(--shadow-card);
+    box-shadow: 0 8px 40px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04);
   }
   .form-card-wrapper::before {
     content: '';
@@ -387,9 +387,35 @@ fbq('track', 'PageView');
     box-shadow: 0 0 0 1px var(--accent);
   }
   .cb-item input[type="checkbox"] {
-    width: 20px; height: 20px;
-    accent-color: var(--accent);
-    flex-shrink: 0; cursor: pointer;
+    display: none;
+  }
+  .cb-item .cb-check {
+    width: 22px;
+    height: 22px;
+    border: 2px solid var(--border);
+    border-radius: 5px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    background: #fff;
+  }
+  .cb-item .cb-check svg {
+    width: 14px;
+    height: 14px;
+    stroke: #fff;
+    stroke-width: 3;
+    fill: none;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  .cb-item.selected .cb-check {
+    background: var(--success);
+    border-color: var(--success);
+  }
+  .cb-item.selected .cb-check svg {
+    opacity: 1;
   }
   .cb-item label { font-size: 15px; font-weight: 500; cursor: pointer; margin-bottom: 0; }
 
@@ -851,18 +877,22 @@ fbq('track', 'PageView');
             <div class="cb-group" id="serviceTypes">
               <div class="cb-item" onclick="toggleCheckbox(this)">
                 <input type="checkbox" name="serviceTypes" value="New fence installation" id="svcFence">
+                <div class="cb-check"><svg viewBox="0 0 24 24"><polyline points="4 12 10 18 20 6"/></svg></div>
                 <label for="svcFence">New fence installation</label>
               </div>
               <div class="cb-item" onclick="toggleCheckbox(this)">
                 <input type="checkbox" name="serviceTypes" value="New gate installation" id="svcGate">
+                <div class="cb-check"><svg viewBox="0 0 24 24"><polyline points="4 12 10 18 20 6"/></svg></div>
                 <label for="svcGate">New gate installation</label>
               </div>
               <div class="cb-item" onclick="toggleCheckbox(this)">
                 <input type="checkbox" name="serviceTypes" value="Pool fencing (glass)" id="svcPool">
+                <div class="cb-check"><svg viewBox="0 0 24 24"><polyline points="4 12 10 18 20 6"/></svg></div>
                 <label for="svcPool">Pool fencing (glass)</label>
               </div>
               <div class="cb-item" onclick="toggleCheckbox(this)">
                 <input type="checkbox" name="serviceTypes" value="Shower screens" id="svcShower">
+                <div class="cb-check"><svg viewBox="0 0 24 24"><polyline points="4 12 10 18 20 6"/></svg></div>
                 <label for="svcShower">Shower screens</label>
               </div>
             </div>
