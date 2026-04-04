@@ -1505,7 +1505,10 @@ fbq('track', 'PageView');
       name: d.fullName,
       phone: d.phone,
       email: d.email,
-      address1: d.propertyAddress,
+      address1: d.streetAddress + ', ' + d.suburb,
+      city: d.city,
+      state: d.state,
+      country: 'AU',
       tags: tags,
       source: d.leadSource||'Website Estimate Form',
       customFields: customFields
