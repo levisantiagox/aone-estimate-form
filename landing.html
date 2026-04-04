@@ -23,6 +23,8 @@ fbq('track', 'PageView');
 </script>
 <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=7399152526836351&ev=PageView&noscript=1"/></noscript>
 <!-- End Meta Pixel -->
+<!-- reCAPTCHA v3 -->
+<script src="https://www.google.com/recaptcha/api.js?render=6LdyYaYsAAAAAA0NJHcOGoogfn_9BzP6cDRw-mrw"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
@@ -769,6 +771,11 @@ fbq('track', 'PageView');
             <input type="email" id="email" placeholder="e.g. john@email.com" required autocomplete="email">
             <div class="err" id="emailError">Please enter a valid email address</div>
           </div>
+          <!-- Honeypot - hidden from humans, bots fill it in -->
+          <div style="position:absolute;left:-9999px;top:-9999px;opacity:0;height:0;overflow:hidden;" aria-hidden="true">
+            <label>Leave this empty</label>
+            <input type="text" id="website_url" name="website_url" tabindex="-1" autocomplete="off">
+          </div>
           <div class="btn-row">
             <button type="button" class="btn btn-next" onclick="nextStep(1)">Next</button>
           </div>
@@ -1402,7 +1409,24 @@ fbq('track', 'PageView');
   // === SUBMIT ===
   window.submitForm = function(){
     if(!validateStep(5))return;
+
+    // Honeypot check
+    if(document.getElementById('website_url').value !== ''){return;}
+
     var d=collectFormData(),sp=document.getElementById('spinner');sp.classList.add('active');
+
+    // reCAPTCHA v3
+    grecaptcha.ready(function(){
+      grecaptcha.execute('6LdyYaYsAAAAAA0NJHcOGoogfn_9BzP6cDRw-mrw',{action:'submit'}).then(function(token){
+        d.recaptchaToken = token;
+        processSubmission(d,sp);
+      }).catch(function(){
+        processSubmission(d,sp);
+      });
+    });
+  };
+
+  function processSubmission(d,sp){
     var tm={'Within 2 weeks':'Hot Lead','Within a month':'Warm Lead','Within 1-2 months':'Nurture','3+ months':'Long-Term Nurture'};
     var tags=['Website Form - Complete',tm[d.timeline]||'Nurture'];
     if(d.leadSource)tags.push('Source - '+d.leadSource);
@@ -1464,7 +1488,7 @@ fbq('track', 'PageView');
     .then(function(){showConf(d.fullName);})
     .catch(function(){showConf(d.fullName);})
     .finally(function(){sp.classList.remove('active');});
-  };
+  }
   function showConf(name){
     window.location.href = '/thank-you';
   }
