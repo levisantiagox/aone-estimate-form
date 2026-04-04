@@ -1,0 +1,286 @@
+{
+  "name": "A-One Fencing - Instant Estimate Form Handler",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "aone-estimate-partial",
+        "responseMode": "onReceived",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "7a1b2c3d-0001-4000-a000-000000000001",
+      "name": "Partial Lead Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "aone-partial"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "aone-estimate-submit",
+        "responseMode": "onReceived",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "7a1b2c3d-0001-4000-a000-000000000002",
+      "name": "Full Submit Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 700],
+      "webhookId": "aone-submit"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/contacts/",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ locationId: '9H8ikOJT1S3b1d5ETdIK', name: $json.body.fullName, phone: $json.body.phone, email: $json.body.email, tags: ['Website Form - Partial'], source: 'Website Estimate Form' }) }}"
+      },
+      "id": "7a1b2c3d-0001-4000-a000-000000000003",
+      "name": "Create Partial Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_GHL_AUTH_CREDENTIAL_ID",
+          "name": "GHL A1 Fencing API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/contacts/upsert",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ locationId: '9H8ikOJT1S3b1d5ETdIK', name: $json.body.fullName, phone: $json.body.phone, email: $json.body.email, address1: $json.body.propertyAddress, tags: $json.body.tags, source: $json.body.leadSource || 'Website Estimate Form', customFields: [ { key: 'property_type', field_value: $json.body.propertyType || '' }, { key: 'property_owner_status', field_value: $json.body.propertyOwner || '' }, { key: 'service_types_requested', field_value: ($json.body.serviceTypes || []).join(', ') }, { key: 'fence_material', field_value: $json.body.fenceMaterial || '' }, { key: 'fence_height', field_value: $json.body.fenceHeight || '' }, { key: 'fence_length_range', field_value: $json.body.fenceLength || '' }, { key: 'existing_fence_removal', field_value: $json.body.fenceRemoval || '' }, { key: 'gate_type', field_value: $json.body.gateType || '' }, { key: 'gate_material', field_value: $json.body.gateMaterial || '' }, { key: 'number_of_gates', field_value: $json.body.numberOfGates || '' }, { key: 'pool_fence_type', field_value: $json.body.poolFenceType || '' }, { key: 'pool_fence_length_range', field_value: $json.body.poolFenceLength || '' }, { key: 'pool_status', field_value: $json.body.poolStatus || '' }, { key: 'council_compliance_required', field_value: $json.body.councilCompliance || '' }, { key: 'shower_screen_type', field_value: $json.body.showerScreenType || '' }, { key: 'shower_screen_configuration', field_value: $json.body.showerConfig || '' }, { key: 'number_of_shower_screens', field_value: $json.body.numberOfShowerScreens || '' }, { key: 'ground_conditions', field_value: $json.body.groundConditions || '' }, { key: 'site_access_difficulty', field_value: $json.body.siteAccess || '' }, { key: 'council_boundary_considerations', field_value: $json.body.councilBoundary || '' }, { key: 'project_timeline', field_value: $json.body.timeline || '' }, { key: 'lead_source', field_value: $json.body.leadSource || '' }, { key: 'additional_notes', field_value: $json.body.additionalNotes || '' } ] }) }}"
+      },
+      "id": "7a1b2c3d-0001-4000-a000-000000000004",
+      "name": "Upsert Full Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 700],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_GHL_AUTH_CREDENTIAL_ID",
+          "name": "GHL A1 Fencing API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/opportunities/",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ pipelineId: 'M8uFU74BGphAKFVw6VFp', locationId: '9H8ikOJT1S3b1d5ETdIK', name: $('Upsert Full Contact').item.json.contact.name + ' - Estimate Request', stageId: '27556b70-1712-483b-a0b5-8402d7d8c325', status: 'open', contactId: $('Upsert Full Contact').item.json.contact.id }) }}"
+      },
+      "id": "7a1b2c3d-0001-4000-a000-000000000005",
+      "name": "Create Opportunity",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [750, 700],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_GHL_AUTH_CREDENTIAL_ID",
+          "name": "GHL A1 Fencing API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/conversations/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ type: 'SMS', contactId: $('Upsert Full Contact').item.json.contact.id, message: 'Hey ' + $('Full Submit Webhook').item.json.body.fullName.split(' ')[0] + ', thanks for your enquiry with A-One Fencing & Gates! We have received your details and your estimate is being prepared. You will hear from us within 24 hours. If it is urgent, call Kyle on 0407 496 872.' }) }}"
+      },
+      "id": "7a1b2c3d-0001-4000-a000-000000000006",
+      "name": "Send Confirmation SMS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [750, 500],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_GHL_AUTH_CREDENTIAL_ID",
+          "name": "GHL A1 Fencing API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "hot-lead-check",
+              "leftValue": "={{ $('Full Submit Webhook').item.json.body.timeline }}",
+              "rightValue": "ASAP",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "7a1b2c3d-0001-4000-a000-000000000007",
+      "name": "Is Hot Lead?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1000, 700]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/conversations/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ type: 'SMS', contactId: 'REPLACE_WITH_KYLE_CONTACT_ID_OR_OPERATOR_PHONE', message: 'HOT LEAD: ' + $('Full Submit Webhook').item.json.body.fullName + ' needs ' + ($('Full Submit Webhook').item.json.body.serviceTypes || []).join(', ') + ' ASAP. Call within 1 hour. Phone: ' + $('Full Submit Webhook').item.json.body.phone }) }}"
+      },
+      "id": "7a1b2c3d-0001-4000-a000-000000000008",
+      "name": "Alert Operator - Hot Lead",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1250, 600],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_GHL_AUTH_CREDENTIAL_ID",
+          "name": "GHL A1 Fencing API Key"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Partial Lead Webhook": {
+      "main": [
+        [
+          {
+            "node": "Create Partial Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Full Submit Webhook": {
+      "main": [
+        [
+          {
+            "node": "Upsert Full Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Full Contact": {
+      "main": [
+        [
+          {
+            "node": "Create Opportunity",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Confirmation SMS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Opportunity": {
+      "main": [
+        [
+          {
+            "node": "Is Hot Lead?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Hot Lead?": {
+      "main": [
+        [
+          {
+            "node": "Alert Operator - Hot Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

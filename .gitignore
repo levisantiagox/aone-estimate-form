@@ -1,0 +1,6 @@
+# Environment variables (secrets live here - NEVER commit this)
+.env
+.env.*
+
+# Netlify local
+.netlify
