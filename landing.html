@@ -1520,7 +1520,8 @@ fbq('track', 'PageView');
     .finally(function(){sp.classList.remove('active');});
   }
   function showConf(name){
-    window.location.href = '/thank-you';
+    var base = window.location.pathname.replace(/\/index\.html$/,'').replace(/\/$/,'');
+    window.location.href = base + '/thank-you';
   }
 
   updateProgress();
