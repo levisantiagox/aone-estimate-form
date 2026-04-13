@@ -1539,7 +1539,7 @@ fbq('track', 'PageView');
       }
     })
     .then(function(){
-      if(contactId){ sendEstimateEmail(contactId, d); }
+      if(contactId){ addEstimateNote(contactId, d, est); }
       showConf(d.fullName);
     })
     .catch(function(){showConf(d.fullName);})
@@ -1736,18 +1736,12 @@ fbq('track', 'PageView');
     return html;
   }
 
-  // === STORE ESTIMATE FOR GHL WORKFLOW TO SEND (28-min delay) ===
-  function sendEstimateEmail(contactId, d){
-    var est = calcEstimate(d);
+  // === ADD ESTIMATE AS NOTE ON CONTACT ===
+  function addEstimateNote(contactId, d, est){
     var emailHtml = buildEstimateEmailHtml(d, est);
-    ghlPost('/contacts/upsert', {
-      locationId: GHL.locationId,
-      email: d.email,
-      customFields: [
-        { key: 'estimate_email_html', field_value: emailHtml },
-        { key: 'estimate_total_range', field_value: '$' + est.totalLow.toLocaleString('en-AU') + ' - $' + est.totalHigh.toLocaleString('en-AU') }
-      ]
-    }).catch(function(e){ console.log('Estimate store error:', e); });
+    ghlPost('/contacts/' + contactId + '/notes', {
+      body: emailHtml
+    }).catch(function(e){ console.log('Estimate note error:', e); });
   }
 
   function showConf(name){
