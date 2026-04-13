@@ -1498,6 +1498,7 @@ fbq('track', 'PageView');
     cf('lead_source',d.leadSource);
     cf('additional_notes',d.additionalNotes);
 
+    var contactId = null;
     ghlPost('/contacts/upsert', {
       locationId: GHL.locationId,
       firstName: parts[0]||'',
@@ -1514,22 +1515,226 @@ fbq('track', 'PageView');
       customFields: customFields
     })
     .then(function(res){
-      var cid = res.contact && res.contact.id;
-      if(cid){
+      contactId = res.contact && res.contact.id;
+      if(contactId){
         return ghlPost('/opportunities/',{
           pipelineId:GHL.pipelineId,
           locationId:GHL.locationId,
           name:d.fullName+' - '+d.serviceTypes.join(', '),
           pipelineStageId:GHL.stageId,
           status:'open',
-          contactId:cid
+          contactId:contactId
         });
       }
     })
-    .then(function(){showConf(d.fullName);})
+    .then(function(){
+      if(contactId){ sendEstimateEmail(contactId, d); }
+      showConf(d.fullName);
+    })
     .catch(function(){showConf(d.fullName);})
     .finally(function(){sp.classList.remove('active');});
   }
+
+  // === ESTIMATE PRICING ENGINE ===
+  function calcEstimate(d){
+    var total = 0;
+    var scope = [];
+    var assumptions = [];
+    var hasSlider = false;
+    var hasPool = false;
+    var isRaked = !d.groundConditions || d.groundConditions !== 'Flat';
+
+    // Fencing
+    if(d.serviceTypes.indexOf('New fence installation') !== -1 && d.fenceLength){
+      var len = parseFloat(d.fenceLength) || 0;
+      var h = d.fenceHeight || '1.8m';
+      var mat = d.fenceMaterial || 'Colorbond';
+      var rate = 0;
+
+      if(mat === 'Colorbond'){
+        if(h === '2m') rate = isRaked ? 215 : 195;
+        else rate = isRaked ? 190 : 170;
+      } else if(mat === 'PVC'){
+        if(h === '2m') rate = 260;
+        else rate = 235;
+      } else if(mat === 'Timber'){
+        if(h === '2m') rate = isRaked ? 220 : 200;
+        else rate = isRaked ? 190 : 170;
+      } else {
+        rate = isRaked ? 190 : 170;
+      }
+
+      if(len > 0 && rate > 0){
+        total += len * rate;
+        scope.push('Supply and install ' + len + ' linear metres of ' + h + ' ' + mat + ' fencing');
+      }
+      if(isRaked) assumptions.push('Ground type defaulted to raked pricing. If confirmed level, fencing rate may reduce.');
+    }
+
+    // Fence removal
+    if(d.fenceRemoval && d.fenceRemoval.indexOf('Yes') !== -1){
+      var remLen = 0;
+      if(d.fenceRemoval.indexOf('partial') !== -1 && d.partialRemovalMetres){
+        remLen = parseFloat(d.partialRemovalMetres) || 0;
+      } else if(d.fenceRemoval.indexOf('full') !== -1 && d.fenceLength){
+        remLen = parseFloat(d.fenceLength) || 0;
+      }
+      if(remLen > 0){
+        total += remLen * 50;
+        scope.push('Demolition and removal of ' + remLen + ' linear metres of existing fencing');
+      }
+    }
+
+    // Side/pedestrian gates
+    if(d.sideGate === 'Yes' && d.numberOfSideGates){
+      var gateQty = d.numberOfSideGates === '3+' ? 3 : parseInt(d.numberOfSideGates) || 0;
+      var gateMat = d.sideGateMaterial || d.fenceMaterial || 'Colorbond';
+      if(gateMat === 'Match my fence') gateMat = d.fenceMaterial || 'Colorbond';
+      var gateRate = 990;
+      if(gateMat === 'PVC') gateRate = 1150;
+      if(gateMat === 'Aluminium'){ gateRate = 0; assumptions.push('Aluminium pedestrian gates require custom pricing after on-site measure.'); }
+      if(gateQty > 0){
+        scope.push('Supply and install ' + gateQty + 'x ' + gateMat + ' pedestrian gate' + (gateQty > 1 ? 's' : ''));
+        if(gateRate > 0) total += gateQty * gateRate;
+      }
+    }
+
+    // Driveway gate
+    if(d.drivewayGate === 'Yes' && d.drivewayGateType){
+      var dgMat = d.drivewayGateMaterial || d.fenceMaterial || 'Colorbond';
+      if(dgMat === 'Match my fence') dgMat = d.fenceMaterial || 'Colorbond';
+      var dgType = d.drivewayGateType;
+      var dgRate = 0;
+
+      if(dgType === 'Electric / motorised gate' || dgType === 'Sliding gate'){
+        hasSlider = true;
+        if(dgMat === 'Colorbond') dgRate = 6500;
+        else if(dgMat === 'PVC') dgRate = 7500;
+        else if(dgMat === 'Aluminium'){ assumptions.push('Aluminium sliding gate requires custom pricing after on-site measure.'); }
+        else dgRate = 6500;
+        scope.push('Supply and install 1x ' + dgMat + ' electric sliding gate (including motor, track, hardware and PM)');
+        assumptions.push('Customer must organise a licensed electrician to provide 240v power to the sliding gate motor location prior to installation.');
+        assumptions.push('Sliding gate opening size to be confirmed at on-site measure.');
+      } else if(dgType === 'Swing gate (automated)' || dgType === 'Double swing gate'){
+        if(dgMat === 'Colorbond') dgRate = 3500;
+        else if(dgMat === 'PVC') dgRate = 2080;
+        else if(dgMat === 'Aluminium'){ assumptions.push('Aluminium swing gate requires custom pricing after on-site measure.'); }
+        else dgRate = 3500;
+        scope.push('Supply and install 1x ' + dgMat + ' driveway double swing gate set');
+      } else {
+        dgRate = 5000;
+        scope.push('Supply and install 1x driveway gate (' + dgType + ')');
+      }
+      if(dgRate > 0) total += dgRate;
+    }
+
+    // Pool fencing
+    if(d.serviceTypes.indexOf('Pool fencing (glass)') !== -1){
+      hasPool = true;
+      var poolLen = 0;
+      var poolMap = {'Under 10 metres':8, '10 - 15 metres':12, '15 - 25 metres':20, '25+ metres':30};
+      poolLen = poolMap[d.poolFenceLength] || 12;
+      var poolRate = 320;
+      total += poolLen * poolRate;
+      total += 800;
+      scope.push('Supply and install approximately ' + poolLen + ' linear metres of frameless glass pool fencing (subject to on-site measure)');
+      scope.push('1x self-closing pool gate');
+      assumptions.push('Pool fencing and glass balustrades REQUIRE an on-site inspection. Pricing is indicative and subject to final on-site measure.');
+      assumptions.push('Pool fencing within 1250mm of water edge may require non-conductive spigots (additional cost applies).');
+    }
+
+    // Shower screens
+    if(d.serviceTypes.indexOf('Shower screens') !== -1 && d.numberOfShowerScreens){
+      var ssQty = d.numberOfShowerScreens === '3+' ? 3 : parseInt(d.numberOfShowerScreens) || 0;
+      var ssRate = 900;
+      if(d.showerConfig === 'Single fixed panel') ssRate = 600;
+      else if(d.showerConfig === 'Single door') ssRate = 900;
+      else if(d.showerConfig === 'Door + fixed panel') ssRate = 1400;
+      else if(d.showerConfig === 'Corner entry (2 doors)') ssRate = 1800;
+      else if(d.showerConfig === 'Bath screen') ssRate = 800;
+      if(ssQty > 0){
+        total += ssQty * ssRate;
+        scope.push('Supply and install ' + ssQty + 'x shower screen' + (ssQty > 1 ? 's' : '') + ' (' + (d.showerConfig || 'configuration TBC') + ')');
+      }
+    }
+
+    // Underground Service Locator - always
+    total += 800;
+    scope.push('Underground service location');
+
+    // Standard assumptions
+    assumptions.push('No retaining walls required unless identified at on-site inspection.');
+    assumptions.push('No rock expected. Jackhammering will be quoted separately if encountered.');
+    assumptions.push('Dirt from post holes to be spread along fence line or garden beds.');
+    assumptions.push('Travel is assumed within 45 minutes of the workshop.');
+
+    return { total: total, scope: scope, assumptions: assumptions, hasSlider: hasSlider, hasPool: hasPool };
+  }
+
+  // === BUILD ESTIMATE EMAIL HTML (scope + total only, no itemised pricing) ===
+  function buildEstimateEmailHtml(d, est){
+    var firstName = d.fullName.split(' ')[0];
+    var addr = d.propertyAddress || (d.streetAddress + ', ' + d.suburb + ', ' + d.city + ' ' + d.state);
+
+    var paymentTerms = '';
+    if(est.hasSlider){
+      paymentTerms = '<p><strong>Payment Terms:</strong><br>50% deposit is required to secure the quoted price and installation dates<br>An additional 30% is payable once the fence installation is complete<br>The remaining 20% is payable upon installation of the sliding gate</p>';
+    } else {
+      paymentTerms = '<p><strong>Payment Terms:</strong><br>50% deposit is required to secure the quoted price and installation dates<br>Remaining 50% is payable upon completion of the fence installation</p>';
+    }
+
+    var poolBlock = '';
+    if(est.hasPool){
+      poolBlock = '<p><strong>Pool Fence Projects:</strong><br>Glass pool fencing Form 15 will be provided once the invoice is paid in full.</p>';
+    }
+
+    var scopeHtml = '';
+    for(var i = 0; i < est.scope.length; i++){
+      scopeHtml += '- ' + est.scope[i] + '<br>';
+    }
+
+    var assumptionsHtml = '';
+    for(var j = 0; j < est.assumptions.length; j++){
+      assumptionsHtml += '- ' + est.assumptions[j] + '<br>';
+    }
+
+    var html = '<p>Hi ' + firstName + ',</p>'
+      + '<p>Thank you for your patience, it is an extremely busy time of year and enquiries and projects are running at full throttle.</p>'
+      + '<p>Please see below an estimate based on the approximate metres and requirements you provided. This is an online estimate only, and an on-site inspection is required to confirm final pricing.</p>'
+      + '<p>All figures are ex GST unless stated.</p>'
+      + '<p><strong>PROPERTY</strong><br>' + addr + '</p>'
+      + '<p><strong>SCOPE OF WORKS</strong><br>' + scopeHtml + '</p>'
+      + '<p><strong>ESTIMATED TOTAL (Ex GST): $' + est.total.toLocaleString('en-AU') + '</strong></p>'
+      + '<p><strong>KEY ASSUMPTIONS</strong><br>' + assumptionsHtml + '</p>'
+      + '<p><strong>ONLINE ESTIMATE TERMS AND CONDITIONS</strong></p>'
+      + '<p><strong>Quote Validity:</strong><br>This online estimate is valid for 30 days from the date of issue.</p>'
+      + '<p><strong>Online Estimate Only:</strong><br>If our team has not completed an on-site inspection and firm measurement, this is an online estimate only, not a firm quote.</p>'
+      + '<p><strong>Underground Services:</strong><br>We are not liable for any damage to underground services during installation.</p>'
+      + '<p><strong>Boundary and Service Location:</strong><br>It is the owner\'s responsibility to:<br>- Confirm and survey the property boundary<br>- Identify and advise the location of all underground services</p>'
+      + '<p><strong>Rock / Jackhammering:</strong><br>If rock is encountered during installation, jackhammering will be charged separately at a price subject to the size of the job and the location.</p>'
+      + '<p><strong>Changes and Variations:</strong><br>Any changes to the agreed scope or any additional work requested will be subject to a separate quotation and approval.</p>'
+      + paymentTerms
+      + poolBlock
+      + '<p><strong>Cancellation and Rescheduling:</strong><br>Cancellations or rescheduling must be communicated at least 72 hours in advance of the scheduled installation.</p>'
+      + '<p><strong>NEXT STEPS</strong><br>If you would like to move forward or have any questions, just reply to this email or give us a call on 0407 496 872. We will arrange a free on-site inspection to confirm the final scope and provide a formal quote.</p>'
+      + '<p>We look forward to working with you.</p>'
+      + '<p>A-One Fencing and Gates</p>';
+
+    return html;
+  }
+
+  // === SEND ESTIMATE EMAIL VIA GHL ===
+  function sendEstimateEmail(contactId, d){
+    var est = calcEstimate(d);
+    var emailHtml = buildEstimateEmailHtml(d, est);
+    ghlPost('/conversations/messages', {
+      type: 'Email',
+      contactId: contactId,
+      subject: 'Your Online Fencing Estimate - A-One Fencing & Gates',
+      html: emailHtml
+    }).catch(function(e){ console.log('Estimate email error:', e); });
+  }
+
   function showConf(name){
     var base = window.location.pathname.replace(/\/index\.html$/,'').replace(/\/$/,'');
     window.location.href = base + '/thank-you';
