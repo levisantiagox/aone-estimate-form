@@ -1160,6 +1160,13 @@ fbq('track', 'PageView');
       body: JSON.stringify(body)
     }).then(function(r) { return r.json(); });
   }
+  function ghlPut(endpoint, body) {
+    return fetch(GHL.base + endpoint, {
+      method: 'PUT',
+      headers: { 'Authorization': 'Bearer ' + GHL.key, 'Version': '2021-07-28', 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(function(r) { return r.json(); });
+  }
 
   // === AUTO LEAD SOURCE ===
   var params = new URLSearchParams(window.location.search);
@@ -1733,7 +1740,7 @@ fbq('track', 'PageView');
   function sendEstimateEmail(contactId, d){
     var est = calcEstimate(d);
     var emailHtml = buildEstimateEmailHtml(d, est);
-    ghlPost('/contacts/' + contactId, {
+    ghlPut('/contacts/' + contactId, {
       customFields: [
         { key: 'estimate_email_html', field_value: emailHtml },
         { key: 'estimate_total_range', field_value: '$' + est.totalLow.toLocaleString('en-AU') + ' - $' + est.totalHigh.toLocaleString('en-AU') }
