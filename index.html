@@ -1740,7 +1740,9 @@ fbq('track', 'PageView');
   function sendEstimateEmail(contactId, d){
     var est = calcEstimate(d);
     var emailHtml = buildEstimateEmailHtml(d, est);
-    ghlPut('/contacts/' + contactId, {
+    ghlPost('/contacts/upsert', {
+      locationId: GHL.locationId,
+      email: d.email,
       customFields: [
         { key: 'estimate_email_html', field_value: emailHtml },
         { key: 'estimate_total_range', field_value: '$' + est.totalLow.toLocaleString('en-AU') + ' - $' + est.totalHigh.toLocaleString('en-AU') }
