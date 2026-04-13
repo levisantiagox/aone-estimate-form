@@ -1160,13 +1160,6 @@ fbq('track', 'PageView');
       body: JSON.stringify(body)
     }).then(function(r) { return r.json(); });
   }
-  function ghlPut(endpoint, body) {
-    return fetch(GHL.base + endpoint, {
-      method: 'PUT',
-      headers: { 'Authorization': 'Bearer ' + GHL.key, 'Version': '2021-07-28', 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    }).then(function(r) { return r.json(); });
-  }
 
   // === AUTO LEAD SOURCE ===
   var params = new URLSearchParams(window.location.search);
@@ -1736,18 +1729,6 @@ fbq('track', 'PageView');
       scopeHtml += '- ' + est.scope[i] + '<br>';
     }
 
-    var itemsHtml = '';
-    for(var k = 0; k < est.lineItems.length; k++){
-      var li = est.lineItems[k];
-      if(li.included){
-        itemsHtml += li.desc + ' - Included<br>';
-      } else if(li.custom){
-        itemsHtml += li.desc + ' - Custom price after on-site measure<br>';
-      } else {
-        itemsHtml += li.desc + ' - ' + li.qty + ' x $' + li.rate.toLocaleString('en-AU') + '/' + li.unit + ' = $' + li.subtotal.toLocaleString('en-AU') + '<br>';
-      }
-    }
-
     var assumptionsHtml = '';
     for(var j = 0; j < est.assumptions.length; j++){
       assumptionsHtml += '- ' + est.assumptions[j] + '<br>';
@@ -1783,7 +1764,7 @@ fbq('track', 'PageView');
     var emailHtml = buildEstimateEmailHtml(d, est);
     ghlPost('/contacts/' + contactId + '/notes', {
       body: emailHtml
-    }).catch(function(e){ console.log('Estimate note error:', e); });
+    }).catch(function(){});
   }
 
   // === SEND ESTIMATE EMAIL VIA GHL ===
@@ -1794,7 +1775,7 @@ fbq('track', 'PageView');
       contactId: contactId,
       subject: 'Your Online Fencing Estimate - A-One Fencing & Gates',
       html: emailHtml
-    }).catch(function(e){ console.log('Estimate email error:', e); });
+    }).catch(function(){});
   }
 
   function showConf(name){
