@@ -1468,6 +1468,11 @@ fbq('track', 'PageView');
     var tm={'Within 2 weeks':'Hot Lead','Within a month':'Warm Lead','Within 1-2 months':'Nurture','3+ months':'Long-Term Nurture'};
     var tags=['Website Form - Complete',tm[d.timeline]||'Nurture'];
     if(d.leadSource)tags.push('Source - '+d.leadSource);
+    if(d.fenceMaterial)tags.push('Material - '+d.fenceMaterial);
+    if(d.sideGateMaterial && d.sideGateMaterial !== 'Match my fence')tags.push('Gate Material - '+d.sideGateMaterial);
+    if(d.drivewayGateMaterial && d.drivewayGateMaterial !== 'Match my fence')tags.push('Gate Material - '+d.drivewayGateMaterial);
+    var hasAluminium = (d.fenceMaterial === 'Aluminium (standard)') || (d.sideGateMaterial === 'Aluminium') || (d.drivewayGateMaterial === 'Aluminium');
+    if(hasAluminium)tags.push('Custom Pricing Required - Aluminium');
 
     var parts = d.fullName.split(' ');
     var customFields = [];
