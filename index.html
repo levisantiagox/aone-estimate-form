@@ -1747,17 +1747,15 @@ fbq('track', 'PageView');
     }).catch(function(e){ console.log('Estimate note error:', e); });
   }
 
-  // === SEND ESTIMATE EMAIL (scheduled 15 min after enquiry) ===
+  // === SEND ESTIMATE EMAIL VIA GHL ===
   function sendEstimateEmail(contactId, d, est){
     var emailHtml = buildEstimateEmailHtml(d, est);
-    var sendAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
-    ghlPost('/conversations/messages/schedule', {
+    ghlPost('/conversations/messages', {
       type: 'Email',
       contactId: contactId,
       subject: 'Your Online Fencing Estimate - A-One Fencing & Gates',
-      html: emailHtml,
-      scheduledTimestamp: sendAt
-    }).catch(function(e){ console.log('Estimate email schedule error:', e); });
+      html: emailHtml
+    }).catch(function(e){ console.log('Estimate email error:', e); });
   }
 
   function showConf(name){
