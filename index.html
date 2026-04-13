@@ -1553,6 +1553,7 @@ fbq('track', 'PageView');
   function calcEstimate(d){
     var total = 0;
     var scope = [];
+    var lineItems = [];
     var assumptions = [];
     var hasSlider = false;
     var hasPool = false;
@@ -1564,6 +1565,7 @@ fbq('track', 'PageView');
       var h = d.fenceHeight || '1.8m';
       var mat = d.fenceMaterial || 'Colorbond';
       var rate = 0;
+      var gradeLabel = isRaked ? 'Raked' : 'Level';
 
       if(mat === 'Colorbond'){
         if(h === '2m') rate = isRaked ? 215 : 195;
@@ -1571,6 +1573,7 @@ fbq('track', 'PageView');
       } else if(mat === 'PVC'){
         if(h === '2m') rate = 260;
         else rate = 235;
+        gradeLabel = 'Full Privacy';
       } else if(mat === 'Timber'){
         if(h === '2m') rate = isRaked ? 220 : 200;
         else rate = isRaked ? 190 : 170;
@@ -1579,10 +1582,13 @@ fbq('track', 'PageView');
       }
 
       if(len > 0 && rate > 0){
-        total += len * rate;
+        var sub = len * rate;
+        total += sub;
         scope.push('Supply and install ' + len + ' linear metres of ' + h + ' ' + mat + ' fencing');
+        lineItems.push({desc: mat + ' Fence ' + h + ' ' + gradeLabel, qty: len, unit: 'm', rate: rate, subtotal: sub});
       }
-      if(isRaked) assumptions.push('Ground type defaulted to raked pricing. If confirmed level, fencing rate may reduce.');
+      if(isRaked && mat !== 'PVC') assumptions.push('Ground type defaulted to raked pricing. If confirmed level, fencing rate may reduce.');
+      if(mat === 'PVC') assumptions.push('PVC defaulted to Full Privacy. If Semi Privacy preferred, rate adjusts.');
     }
 
     // Fence removal
@@ -1594,8 +1600,10 @@ fbq('track', 'PageView');
         remLen = parseFloat(d.fenceLength) || 0;
       }
       if(remLen > 0){
-        total += remLen * 50;
+        var remSub = remLen * 50;
+        total += remSub;
         scope.push('Demolition and removal of ' + remLen + ' linear metres of existing fencing');
+        lineItems.push({desc: 'Existing Fence Removal (demo, posts cut flush)', qty: remLen, unit: 'm', rate: 50, subtotal: remSub});
       }
     }
 
@@ -1609,7 +1617,13 @@ fbq('track', 'PageView');
       if(gateMat === 'Aluminium'){ gateRate = 0; assumptions.push('Aluminium pedestrian gates require custom pricing after on-site measure.'); }
       if(gateQty > 0){
         scope.push('Supply and install ' + gateQty + 'x ' + gateMat + ' pedestrian gate' + (gateQty > 1 ? 's' : ''));
-        if(gateRate > 0) total += gateQty * gateRate;
+        if(gateRate > 0){
+          var gateSub = gateQty * gateRate;
+          total += gateSub;
+          lineItems.push({desc: gateMat + ' Pedestrian Gate', qty: gateQty, unit: 'each', rate: gateRate, subtotal: gateSub});
+        } else {
+          lineItems.push({desc: gateMat + ' Pedestrian Gate' + (gateQty > 1 ? 's' : ''), qty: gateQty, unit: 'each', rate: 0, subtotal: 0, custom: true});
+        }
       }
     }
 
@@ -1627,6 +1641,7 @@ fbq('track', 'PageView');
         else if(dgMat === 'Aluminium'){ assumptions.push('Aluminium sliding gate requires custom pricing after on-site measure.'); }
         else dgRate = 6500;
         scope.push('Supply and install 1x ' + dgMat + ' electric sliding gate (including motor, track, hardware and PM)');
+        lineItems.push({desc: dgMat + ' Electric Sliding Gate S&I (incl motor, wheels, rollers, keepers, track, PM)', qty: 1, unit: 'each', rate: dgRate, subtotal: dgRate, custom: dgRate === 0});
         assumptions.push('Customer must organise a licensed electrician to provide 240v power to the sliding gate motor location prior to installation.');
         assumptions.push('Sliding gate opening size to be confirmed at on-site measure.');
       } else if(dgType === 'Swing gate (automated)' || dgType === 'Double swing gate'){
@@ -1635,9 +1650,11 @@ fbq('track', 'PageView');
         else if(dgMat === 'Aluminium'){ assumptions.push('Aluminium swing gate requires custom pricing after on-site measure.'); }
         else dgRate = 3500;
         scope.push('Supply and install 1x ' + dgMat + ' driveway double swing gate set');
+        lineItems.push({desc: dgMat + ' Driveway Double Swing Gate Set', qty: 1, unit: 'each', rate: dgRate, subtotal: dgRate, custom: dgRate === 0});
       } else {
         dgRate = 5000;
         scope.push('Supply and install 1x driveway gate (' + dgType + ')');
+        lineItems.push({desc: 'Driveway Gate (' + dgType + ')', qty: 1, unit: 'each', rate: dgRate, subtotal: dgRate});
       }
       if(dgRate > 0) total += dgRate;
     }
@@ -1649,10 +1666,13 @@ fbq('track', 'PageView');
       var poolMap = {'Under 10 metres':8, '10 - 15 metres':12, '15 - 25 metres':20, '25+ metres':30};
       poolLen = poolMap[d.poolFenceLength] || 12;
       var poolRate = 320;
-      total += poolLen * poolRate;
+      var poolSub = poolLen * poolRate;
+      total += poolSub;
       total += 800;
       scope.push('Supply and install approximately ' + poolLen + ' linear metres of frameless glass pool fencing (subject to on-site measure)');
       scope.push('1x self-closing pool gate');
+      lineItems.push({desc: 'Pool Fencing, Core Drill Mount (subject to on-site measure)', qty: poolLen, unit: 'm', rate: poolRate, subtotal: poolSub});
+      lineItems.push({desc: 'Self Closing Pool Gate', qty: 1, unit: 'each', rate: 800, subtotal: 800});
       assumptions.push('Pool fencing and glass balustrades REQUIRE an on-site inspection. Pricing is indicative and subject to final on-site measure.');
       assumptions.push('Pool fencing within 1250mm of water edge may require non-conductive spigots (additional cost applies).');
     }
@@ -1661,20 +1681,27 @@ fbq('track', 'PageView');
     if(d.serviceTypes.indexOf('Shower screens') !== -1 && d.numberOfShowerScreens){
       var ssQty = d.numberOfShowerScreens === '3+' ? 3 : parseInt(d.numberOfShowerScreens) || 0;
       var ssRate = 900;
+      var ssDesc = d.showerConfig || 'configuration TBC';
       if(d.showerConfig === 'Single fixed panel') ssRate = 600;
       else if(d.showerConfig === 'Single door') ssRate = 900;
       else if(d.showerConfig === 'Door + fixed panel') ssRate = 1400;
       else if(d.showerConfig === 'Corner entry (2 doors)') ssRate = 1800;
       else if(d.showerConfig === 'Bath screen') ssRate = 800;
       if(ssQty > 0){
-        total += ssQty * ssRate;
-        scope.push('Supply and install ' + ssQty + 'x shower screen' + (ssQty > 1 ? 's' : '') + ' (' + (d.showerConfig || 'configuration TBC') + ')');
+        var ssSub = ssQty * ssRate;
+        total += ssSub;
+        scope.push('Supply and install ' + ssQty + 'x shower screen' + (ssQty > 1 ? 's' : '') + ' (' + ssDesc + ')');
+        lineItems.push({desc: 'Shower Screen (' + ssDesc + ')', qty: ssQty, unit: 'each', rate: ssRate, subtotal: ssSub});
       }
     }
 
     // Underground Service Locator - always
     total += 800;
     scope.push('Underground service location');
+    lineItems.push({desc: 'Underground Service Locator', qty: 1, unit: 'each', rate: 800, subtotal: 800});
+
+    // Travel
+    lineItems.push({desc: 'Travel Allowance', qty: 0, unit: '', rate: 0, subtotal: 0, included: true});
 
     // Standard assumptions
     assumptions.push('No retaining walls required unless identified at on-site inspection.');
@@ -1684,10 +1711,10 @@ fbq('track', 'PageView');
 
     var totalLow = Math.round(total * 0.9);
     var totalHigh = Math.round(total * 1.1);
-    return { total: total, totalLow: totalLow, totalHigh: totalHigh, scope: scope, assumptions: assumptions, hasSlider: hasSlider, hasPool: hasPool };
+    return { total: total, totalLow: totalLow, totalHigh: totalHigh, scope: scope, lineItems: lineItems, assumptions: assumptions, hasSlider: hasSlider, hasPool: hasPool };
   }
 
-  // === BUILD ESTIMATE EMAIL HTML (scope + total only, no itemised pricing) ===
+  // === BUILD FULL ESTIMATE EMAIL HTML ===
   function buildEstimateEmailHtml(d, est){
     var firstName = d.fullName.split(' ')[0];
     var addr = d.propertyAddress || (d.streetAddress + ', ' + d.suburb + ', ' + d.city + ' ' + d.state);
@@ -1709,6 +1736,18 @@ fbq('track', 'PageView');
       scopeHtml += '- ' + est.scope[i] + '<br>';
     }
 
+    var itemsHtml = '';
+    for(var k = 0; k < est.lineItems.length; k++){
+      var li = est.lineItems[k];
+      if(li.included){
+        itemsHtml += li.desc + ' - Included<br>';
+      } else if(li.custom){
+        itemsHtml += li.desc + ' - Custom price after on-site measure<br>';
+      } else {
+        itemsHtml += li.desc + ' - ' + li.qty + ' x $' + li.rate.toLocaleString('en-AU') + '/' + li.unit + ' = $' + li.subtotal.toLocaleString('en-AU') + '<br>';
+      }
+    }
+
     var assumptionsHtml = '';
     for(var j = 0; j < est.assumptions.length; j++){
       assumptionsHtml += '- ' + est.assumptions[j] + '<br>';
@@ -1720,6 +1759,7 @@ fbq('track', 'PageView');
       + '<p>All figures are ex GST unless stated.</p>'
       + '<p><strong>PROPERTY</strong><br>' + addr + '</p>'
       + '<p><strong>SCOPE OF WORKS</strong><br>' + scopeHtml + '</p>'
+      + '<p><strong>ITEMISED ONLINE ESTIMATE (Ex GST)</strong><br>' + itemsHtml + '</p>'
       + '<p><strong>ESTIMATED TOTAL (Ex GST): $' + est.totalLow.toLocaleString('en-AU') + ' - $' + est.totalHigh.toLocaleString('en-AU') + '</strong></p>'
       + '<p><strong>KEY ASSUMPTIONS</strong><br>' + assumptionsHtml + '</p>'
       + '<p><strong>ONLINE ESTIMATE TERMS AND CONDITIONS</strong></p>'
