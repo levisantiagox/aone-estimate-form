@@ -1469,10 +1469,7 @@ fbq('track', 'PageView');
     var tags=['Website Form - Complete',tm[d.timeline]||'Nurture'];
     if(d.leadSource)tags.push('Source - '+d.leadSource);
     if(d.fenceMaterial)tags.push('Material - '+d.fenceMaterial);
-    if(d.sideGateMaterial && d.sideGateMaterial !== 'Match my fence')tags.push('Gate Material - '+d.sideGateMaterial);
-    if(d.drivewayGateMaterial && d.drivewayGateMaterial !== 'Match my fence')tags.push('Gate Material - '+d.drivewayGateMaterial);
-    var hasAluminium = (d.fenceMaterial === 'Aluminium (standard)') || (d.sideGateMaterial === 'Aluminium') || (d.drivewayGateMaterial === 'Aluminium');
-    if(hasAluminium)tags.push('Custom Pricing Required - Aluminium');
+    if(d.fenceMaterial === 'Aluminium (standard)')tags.push('Custom Pricing Required - Aluminium');
 
     var parts = d.fullName.split(' ');
     var customFields = [];
