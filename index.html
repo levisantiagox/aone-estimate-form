@@ -1501,6 +1501,7 @@ fbq('track', 'PageView');
     cf('additional_notes',d.additionalNotes);
 
     var contactId = null;
+    var est = calcEstimate(d);
     ghlPost('/contacts/upsert', {
       locationId: GHL.locationId,
       firstName: parts[0]||'',
@@ -1525,7 +1526,8 @@ fbq('track', 'PageView');
           name:d.fullName+' - '+d.serviceTypes.join(', '),
           pipelineStageId:GHL.stageId,
           status:'open',
-          contactId:contactId
+          contactId:contactId,
+          monetaryValue:est.total
         });
       }
     })
