@@ -1670,7 +1670,9 @@ fbq('track', 'PageView');
     assumptions.push('Dirt from post holes to be spread along fence line or garden beds.');
     assumptions.push('Travel is assumed within 45 minutes of the workshop.');
 
-    return { total: total, scope: scope, assumptions: assumptions, hasSlider: hasSlider, hasPool: hasPool };
+    var totalLow = Math.round(total * 0.9);
+    var totalHigh = Math.round(total * 1.1);
+    return { total: total, totalLow: totalLow, totalHigh: totalHigh, scope: scope, assumptions: assumptions, hasSlider: hasSlider, hasPool: hasPool };
   }
 
   // === BUILD ESTIMATE EMAIL HTML (scope + total only, no itemised pricing) ===
@@ -1706,7 +1708,7 @@ fbq('track', 'PageView');
       + '<p>All figures are ex GST unless stated.</p>'
       + '<p><strong>PROPERTY</strong><br>' + addr + '</p>'
       + '<p><strong>SCOPE OF WORKS</strong><br>' + scopeHtml + '</p>'
-      + '<p><strong>ESTIMATED TOTAL (Ex GST): $' + est.total.toLocaleString('en-AU') + '</strong></p>'
+      + '<p><strong>ESTIMATED TOTAL (Ex GST): $' + est.totalLow.toLocaleString('en-AU') + ' - $' + est.totalHigh.toLocaleString('en-AU') + '</strong></p>'
       + '<p><strong>KEY ASSUMPTIONS</strong><br>' + assumptionsHtml + '</p>'
       + '<p><strong>ONLINE ESTIMATE TERMS AND CONDITIONS</strong></p>'
       + '<p><strong>Quote Validity:</strong><br>This online estimate is valid for 30 days from the date of issue.</p>'
@@ -1725,16 +1727,16 @@ fbq('track', 'PageView');
     return html;
   }
 
-  // === SEND ESTIMATE EMAIL VIA GHL ===
+  // === STORE ESTIMATE FOR GHL WORKFLOW TO SEND (28-min delay) ===
   function sendEstimateEmail(contactId, d){
     var est = calcEstimate(d);
     var emailHtml = buildEstimateEmailHtml(d, est);
-    ghlPost('/conversations/messages', {
-      type: 'Email',
-      contactId: contactId,
-      subject: 'Your Online Fencing Estimate - A-One Fencing & Gates',
-      html: emailHtml
-    }).catch(function(e){ console.log('Estimate email error:', e); });
+    ghlPost('/contacts/' + contactId, {
+      customFields: [
+        { key: 'estimate_email_html', field_value: emailHtml },
+        { key: 'estimate_total_range', field_value: '$' + est.totalLow.toLocaleString('en-AU') + ' - $' + est.totalHigh.toLocaleString('en-AU') }
+      ]
+    }).catch(function(e){ console.log('Estimate store error:', e); });
   }
 
   function showConf(name){
