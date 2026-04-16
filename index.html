@@ -1642,14 +1642,16 @@ fbq('track', 'PageView');
     })
     .then(function(){
       if (contactId && !d.manualReview) {
-        addEstimateNote(contactId, d, est);
-        sendEstimateEmail(contactId, d, est);
+        return Promise.allSettled([
+          addEstimateNote(contactId, d, est),
+          sendEstimateEmail(contactId, d, est)
+        ]);
       } else if (contactId && d.manualReview) {
-        addManualReviewNote(contactId, d);
+        return addManualReviewNote(contactId, d);
       }
-      onSubmitSuccess(d);
     })
-    .catch(function(){ onSubmitSuccess(d); })
+    .catch(function(){})
+    .then(function(){ onSubmitSuccess(d); })
     .finally(function(){sp.classList.remove('active');});
   }
 
@@ -1872,21 +1874,19 @@ fbq('track', 'PageView');
 
   // === ADD ESTIMATE AS NOTE ON CONTACT ===
   function addEstimateNote(contactId, d, est){
-    var emailHtml = buildEstimateEmailHtml(d, est);
-    ghlPost('/contacts/' + contactId + '/notes', {
-      body: emailHtml
-    }).catch(function(){});
+    return ghlPost('/contacts/' + contactId + '/notes', {
+      body: buildEstimateEmailHtml(d, est)
+    });
   }
 
   // === SEND ESTIMATE EMAIL VIA GHL ===
   function sendEstimateEmail(contactId, d, est){
-    var emailHtml = buildEstimateEmailHtml(d, est);
-    ghlPost('/conversations/messages', {
+    return ghlPost('/conversations/messages', {
       type: 'Email',
       contactId: contactId,
       subject: 'Your Online Fencing Estimate - A-One Fencing & Gates',
-      html: emailHtml
-    }).catch(function(){});
+      html: buildEstimateEmailHtml(d, est)
+    });
   }
 
   // === MANUAL-REVIEW NOTE (triage when too many fields are "Not sure") ===
@@ -1894,7 +1894,7 @@ fbq('track', 'PageView');
     var body = '<p>Lead routed to manual review: ' + d.notSureCount + ' fields marked "Not sure".</p>'
       + '<p>Customer requested a free on-site measure via the estimate form. Book a site visit and send a formal quote after inspection.</p>'
       + '<p>Form notes: ' + (d.additionalNotes || 'none') + '</p>';
-    ghlPost('/contacts/' + contactId + '/notes', { body: body }).catch(function(){});
+    return ghlPost('/contacts/' + contactId + '/notes', { body: body });
   }
 
   // === SUCCESS HANDLER (fires whether or not the GHL/n8n chain completed) ===
