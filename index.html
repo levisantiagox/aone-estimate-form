@@ -911,22 +911,9 @@ fbq('track', 'PageView');
               <select id="fenceHeight"><option value="">Select height...</option><option value="1.8m">1.8m</option><option value="2m">2m</option><option value="Other">Other</option><option value="Not sure yet">Not sure yet</option></select>
             </div>
             <div class="fg">
-              <label>Approximate Total Fence Length <span class="req">*</span></label>
-              <select id="fenceLengthRange" required>
-                <option value="">Select length range...</option>
-                <option value="Under 10 metres">Under 10 metres</option>
-                <option value="10 - 20 metres">10 - 20 metres</option>
-                <option value="20 - 40 metres">20 - 40 metres</option>
-                <option value="40 - 60 metres">40 - 60 metres</option>
-                <option value="60 - 100 metres">60 - 100 metres</option>
-                <option value="100+ metres">100+ metres</option>
-                <option value="Not sure">Not sure, send me a site measure</option>
-              </select>
-              <p style="font-size:12px;color:var(--text-muted);margin-top:6px;">Roughly, one metre is about one big step. Exact number is optional below.</p>
-            </div>
-            <div class="fg">
-              <label>Exact metres (optional, if you know)</label>
-              <input type="number" id="fenceLength" placeholder="e.g. 25" min="1" max="999">
+              <label>Approximate Total Fence Length (metres) <span class="req">*</span></label>
+              <input type="number" id="fenceLength" placeholder="e.g. 25 metres" min="1" max="999" required>
+              <p style="font-size:12px;color:var(--text-muted);margin-top:6px;">Roughly, one metre is about one big step. Your best guess is fine.</p>
             </div>
             <div class="fg">
               <label>Removal of Existing Fence <span class="req">*</span></label>
@@ -1405,7 +1392,7 @@ fbq('track', 'PageView');
       var svc = getSelectedServices();
       if (svc.length===0){document.getElementById('serviceTypesError').style.display='block';v=false;}
       if (svc.indexOf('New fence installation')!==-1) {
-        ['fenceMaterial','fenceHeight','fenceLengthRange','fenceRemoval'].forEach(function(f){if(!val(f)){hl(f);v=false;}});
+        ['fenceMaterial','fenceHeight','fenceLength','fenceRemoval'].forEach(function(f){if(!val(f)){hl(f);v=false;}});
       }
       if (svc.indexOf('New gate installation')!==-1) {
         if(!val('sideGate')){hl('sideGate');v=false;}
@@ -1491,7 +1478,7 @@ fbq('track', 'PageView');
   function collectFormData(){
     var svc=getSelectedServices();
     var d={fullName:gv('fullName'),phone:gv('phone'),email:gv('email'),streetAddress:gv('streetAddress'),suburb:gv('suburb'),city:gv('city'),state:gv('state'),propertyAddress:gv('streetAddress')+', '+gv('suburb')+', '+gv('city')+' '+gv('state'),propertyType:gv('propertyType'),propertyOwner:gv('propertyOwner'),serviceTypes:svc,timeline:gv('timeline'),leadSource:gv('leadSource'),additionalNotes:gv('additionalNotes')};
-    if(svc.indexOf('New fence installation')!==-1){d.fenceMaterial=gv('fenceMaterial');d.fenceHeight=gv('fenceHeight');d.fenceLengthRange=gv('fenceLengthRange');d.fenceLength=gv('fenceLength');d.fenceRemoval=gv('fenceRemoval');if(d.fenceRemoval==='Yes, partial removal needed')d.partialRemovalMetres=gv('partialRemovalMetres');}
+    if(svc.indexOf('New fence installation')!==-1){d.fenceMaterial=gv('fenceMaterial');d.fenceHeight=gv('fenceHeight');d.fenceLength=gv('fenceLength');d.fenceRemoval=gv('fenceRemoval');if(d.fenceRemoval==='Yes, partial removal needed')d.partialRemovalMetres=gv('partialRemovalMetres');}
     if(svc.indexOf('New gate installation')!==-1){d.sideGate=gv('sideGate');if(d.sideGate==='Yes'){d.sideGateMaterial=gv('sideGateMaterial');d.numberOfSideGates=gv('numberOfSideGates');}d.drivewayGate=gv('drivewayGate');if(d.drivewayGate==='Yes'){d.drivewayGateType=gv('drivewayGateType');d.drivewayGateMaterial=gv('drivewayGateMaterial');}}
     if(svc.indexOf('Pool fencing (glass)')!==-1){d.poolFenceType=gv('poolFenceType');d.poolFenceLength=gv('poolFenceLength');d.poolStatus=gv('poolStatus');d.councilCompliance=gv('councilCompliance');}
     if(svc.indexOf('Shower screens')!==-1){d.showerScreenType=gv('showerScreenType');d.showerConfig=gv('showerConfig');d.numberOfShowerScreens=gv('numberOfShowerScreens');}
@@ -1505,7 +1492,7 @@ fbq('track', 'PageView');
   // backend routes to a human site-measure rather than an auto estimate.
   function countNotSure(d){
     var keys = [
-      'fenceMaterial','fenceHeight','fenceLengthRange','fenceRemoval',
+      'fenceMaterial','fenceHeight','fenceRemoval',
       'sideGateMaterial','drivewayGateType','drivewayGateMaterial',
       'poolFenceType','poolFenceLength','poolStatus','councilCompliance',
       'showerScreenType','showerConfig',
@@ -1600,7 +1587,7 @@ fbq('track', 'PageView');
     cf('service_types_requested', d.serviceTypes.join(', '));
     cf('fence_material', d.fenceMaterial);
     cf('fence_height', d.fenceHeight);
-    cf('fence_length_range', d.fenceLengthRange);
+    cf('fence_length_range', d.fenceLength ? d.fenceLength + ' metres' : '');
     cf('existing_fence_removal', d.fenceRemoval);
     cf('partial_removal_metres', d.partialRemovalMetres);
     cf('gate_type', d.sideGate === 'Yes' ? 'Side/Pedestrian gate' : '');
@@ -1677,11 +1664,8 @@ fbq('track', 'PageView');
     var isRaked = !d.groundConditions || d.groundConditions !== 'Flat';
 
     // Fencing
-    if(d.serviceTypes.indexOf('New fence installation') !== -1){
-      var rangeMid = { 'Under 10 metres': 8, '10 - 20 metres': 15, '20 - 40 metres': 30, '40 - 60 metres': 50, '60 - 100 metres': 80, '100+ metres': 120 };
-      var exactLen = parseFloat(d.fenceLength);
-      var len = isFinite(exactLen) && exactLen > 0 ? exactLen : (rangeMid[d.fenceLengthRange] || 0);
-      if (!exactLen && rangeMid[d.fenceLengthRange]) assumptions.push('Fence length estimated from range "' + d.fenceLengthRange + '", final pricing confirmed at on-site measure.');
+    if(d.serviceTypes.indexOf('New fence installation') !== -1 && d.fenceLength){
+      var len = parseFloat(d.fenceLength) || 0;
       var h = d.fenceHeight || '1.8m';
       var mat = d.fenceMaterial || 'Colorbond';
       var rate = 0;
