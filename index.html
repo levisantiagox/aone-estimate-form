@@ -726,9 +726,9 @@ fbq('track', 'PageView');
   <!-- Hero -->
   <section class="hero">
     <div class="hero-content" id="heroContent">
-      <div class="badge"><div class="badge-dot"></div> Free estimates in 24 hours</div>
+      <div class="badge"><div class="badge-dot"></div> Free estimates in minutes</div>
       <h1>Gold Coast Fencing<br>Without the <span class="highlight">Runaround.</span></h1>
-      <p class="hero-sub">Get an obligation-free estimate for your fencing, gates, pool fencing or shower screens. Fill out the form and we'll get back to you within 24 hours.</p>
+      <p class="hero-sub">Get an accurate estimate for your fencing, gates, pool fencing or shower screens. Fill out the form and your personalised estimate lands in your inbox, usually within the hour in business hours.</p>
 
       <div class="trust-strip">
         <div class="trust-item">
@@ -911,7 +911,21 @@ fbq('track', 'PageView');
               <select id="fenceHeight"><option value="">Select height...</option><option value="1.8m">1.8m</option><option value="2m">2m</option><option value="Other">Other</option><option value="Not sure yet">Not sure yet</option></select>
             </div>
             <div class="fg">
-              <label>Approximate Total Fence Length (metres) <span class="req">*</span></label>
+              <label>Approximate Total Fence Length <span class="req">*</span></label>
+              <select id="fenceLengthRange" required>
+                <option value="">Select length range...</option>
+                <option value="Under 10 metres">Under 10 metres</option>
+                <option value="10 - 20 metres">10 - 20 metres</option>
+                <option value="20 - 40 metres">20 - 40 metres</option>
+                <option value="40 - 60 metres">40 - 60 metres</option>
+                <option value="60 - 100 metres">60 - 100 metres</option>
+                <option value="100+ metres">100+ metres</option>
+                <option value="Not sure">Not sure, send me a site measure</option>
+              </select>
+              <p style="font-size:12px;color:var(--text-muted);margin-top:6px;">Roughly, one metre is about one big step. Exact number is optional below.</p>
+            </div>
+            <div class="fg">
+              <label>Exact metres (optional, if you know)</label>
               <input type="number" id="fenceLength" placeholder="e.g. 25" min="1" max="999">
             </div>
             <div class="fg">
@@ -1032,11 +1046,11 @@ fbq('track', 'PageView');
           </div>
           <input type="hidden" id="leadSource" value="">
           <div class="fg">
-            <label>Upload Photos</label>
+            <label>Upload Photos for a More Accurate Estimate (highly recommended)</label>
             <div class="file-area" onclick="document.getElementById('photoUpload').click()">
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#555570" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              <p><strong>Tap to upload</strong> photos of the area</p>
-              <p style="font-size:12px;margin-top:2px;">JPG, PNG, HEIC. Max 10 files.</p>
+              <p><strong>Tap to upload</strong> photos of the fence line or area</p>
+              <p style="font-size:12px;margin-top:2px;">A few photos help us get your quote closer to the real price. Takes 30 seconds. JPG, PNG, HEIC. Max 10 files.</p>
               <input type="file" id="photoUpload" multiple accept=".jpg,.jpeg,.png,.heic">
             </div>
             <div class="file-list" id="fileList"></div>
@@ -1057,7 +1071,7 @@ fbq('track', 'PageView');
       <div class="confirmation" id="confirmation">
         <div class="check-ring">&#10003;</div>
         <h2>Thanks <span id="confirmName"></span>!</h2>
-        <p>Your estimate is being prepared and you'll receive it within 24 hours.</p>
+        <p>Your estimate is being prepared. In business hours it usually lands in your inbox within the hour, outside hours it'll arrive first thing the next morning.</p>
         <p style="margin-top:12px;">If it's urgent, call Kyle on <a href="tel:0407496872">0407 496 872</a></p>
       </div>
     </div>
@@ -1145,21 +1159,81 @@ fbq('track', 'PageView');
 (function() {
   'use strict';
 
-  // === GHL DIRECT API ===
-  var GHL = {
-    base: 'https://services.leadconnectorhq.com',
-    key: 'pit-0a7aa461-4066-4173-9946-6cc33f7290de',
-    locationId: '9H8ikOJT1S3b1d5ETdIK',
-    pipelineId: 'M8uFU74BGphAKFVw6VFp',
-    stageId: '27556b70-1712-483b-a0b5-8402d7d8c325'
+  /*
+   * AONE_CONFIG
+   *
+   * Single source of truth for runtime config. Populating `n8nWebhookUrl`
+   * (and the two `cf...` secrets) switches the form from the direct-GHL path
+   * to the v3 n8n path without a second code change. See DECISIONS.md in the
+   * aone-estimate-system-review project for the cutover runbook.
+   *
+   * SECURITY: ghlToken is a GoHighLevel Private Integration Token that
+   * currently ships to the browser. This is a known risk tracked in
+   * DISCOVERY_REPORT.md as finding C1. Rotate the token in GHL whenever
+   * this file is updated, revoke the prior value, and remove this field
+   * entirely once the v3 n8n path is live (Steve's Cloudflare Service
+   * Token is the unblock).
+   */
+  var AONE_CONFIG = {
+    n8nWebhookUrl: '',
+    cfClientId: '',
+    cfClientSecret: '',
+
+    ghlBase: 'https://services.leadconnectorhq.com',
+    ghlToken: 'pit-0a7aa461-4066-4173-9946-6cc33f7290de',
+    ghlLocationId: '9H8ikOJT1S3b1d5ETdIK',
+    ghlPipelineId: 'M8uFU74BGphAKFVw6VFp',
+    ghlStageId: '27556b70-1712-483b-a0b5-8402d7d8c325',
+
+    recaptchaSiteKey: '6LdyYaYsAAAAAA0NJHcOGoogfn_9BzP6cDRw-mrw',
+    notSureThreshold: 3
   };
+
   function ghlPost(endpoint, body) {
-    return fetch(GHL.base + endpoint, {
+    return fetch(AONE_CONFIG.ghlBase + endpoint, {
       method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + GHL.key, 'Version': '2021-07-28', 'Content-Type': 'application/json' },
+      headers: {
+        'Authorization': 'Bearer ' + AONE_CONFIG.ghlToken,
+        'Version': '2021-07-28',
+        'Content-Type': 'application/json'
+      },
       body: JSON.stringify(body)
     }).then(function(r) { return r.json(); });
   }
+
+  function n8nPost(payload) {
+    return fetch(AONE_CONFIG.n8nWebhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'CF-Access-Client-Id': AONE_CONFIG.cfClientId,
+        'CF-Access-Client-Secret': AONE_CONFIG.cfClientSecret
+      },
+      body: JSON.stringify(payload)
+    }).then(function(r) { return r.json(); });
+  }
+
+  function usingN8n() {
+    return !!AONE_CONFIG.n8nWebhookUrl;
+  }
+
+  // === ANALYTICS ===
+  // GA4 via GTM dataLayer + Meta Pixel custom events. See DISCOVERY_REPORT.md
+  // 3.5 for the event spec. `quote_delivered` fires server-side (n8n) once v3
+  // is active; not tracked from the browser.
+  function track(eventName, extra) {
+    window.dataLayer = window.dataLayer || [];
+    var payload = Object.assign({ event: eventName }, extra || {});
+    window.dataLayer.push(payload);
+    try {
+      if (typeof fbq === 'function') {
+        fbq('trackCustom', eventName, extra || {});
+      }
+    } catch (e) {}
+  }
+
+  var formStarted = false;
+  var formSubmitted = false;
 
   // === AUTO LEAD SOURCE ===
   var params = new URLSearchParams(window.location.search);
@@ -1280,7 +1354,11 @@ fbq('track', 'PageView');
 
   window.nextStep = function(from) {
     if (!validateStep(from)) return;
-    if (from === 1) firePartialCapture();
+    if (from === 1) {
+      firePartialCapture();
+      if (!formStarted) { formStarted = true; track('form_start'); }
+    }
+    track('form_step_complete', { step: from });
     var steps = getVisibleSteps(), idx = steps.indexOf(from);
     if (idx < steps.length - 1) showStep(steps[idx + 1]);
   };
@@ -1327,7 +1405,7 @@ fbq('track', 'PageView');
       var svc = getSelectedServices();
       if (svc.length===0){document.getElementById('serviceTypesError').style.display='block';v=false;}
       if (svc.indexOf('New fence installation')!==-1) {
-        ['fenceMaterial','fenceHeight','fenceLength','fenceRemoval'].forEach(function(f){if(!val(f)){hl(f);v=false;}});
+        ['fenceMaterial','fenceHeight','fenceLengthRange','fenceRemoval'].forEach(function(f){if(!val(f)){hl(f);v=false;}});
       }
       if (svc.indexOf('New gate installation')!==-1) {
         if(!val('sideGate')){hl('sideGate');v=false;}
@@ -1413,7 +1491,7 @@ fbq('track', 'PageView');
   function collectFormData(){
     var svc=getSelectedServices();
     var d={fullName:gv('fullName'),phone:gv('phone'),email:gv('email'),streetAddress:gv('streetAddress'),suburb:gv('suburb'),city:gv('city'),state:gv('state'),propertyAddress:gv('streetAddress')+', '+gv('suburb')+', '+gv('city')+' '+gv('state'),propertyType:gv('propertyType'),propertyOwner:gv('propertyOwner'),serviceTypes:svc,timeline:gv('timeline'),leadSource:gv('leadSource'),additionalNotes:gv('additionalNotes')};
-    if(svc.indexOf('New fence installation')!==-1){d.fenceMaterial=gv('fenceMaterial');d.fenceHeight=gv('fenceHeight');d.fenceLength=gv('fenceLength');d.fenceRemoval=gv('fenceRemoval');if(d.fenceRemoval==='Yes, partial removal needed')d.partialRemovalMetres=gv('partialRemovalMetres');}
+    if(svc.indexOf('New fence installation')!==-1){d.fenceMaterial=gv('fenceMaterial');d.fenceHeight=gv('fenceHeight');d.fenceLengthRange=gv('fenceLengthRange');d.fenceLength=gv('fenceLength');d.fenceRemoval=gv('fenceRemoval');if(d.fenceRemoval==='Yes, partial removal needed')d.partialRemovalMetres=gv('partialRemovalMetres');}
     if(svc.indexOf('New gate installation')!==-1){d.sideGate=gv('sideGate');if(d.sideGate==='Yes'){d.sideGateMaterial=gv('sideGateMaterial');d.numberOfSideGates=gv('numberOfSideGates');}d.drivewayGate=gv('drivewayGate');if(d.drivewayGate==='Yes'){d.drivewayGateType=gv('drivewayGateType');d.drivewayGateMaterial=gv('drivewayGateMaterial');}}
     if(svc.indexOf('Pool fencing (glass)')!==-1){d.poolFenceType=gv('poolFenceType');d.poolFenceLength=gv('poolFenceLength');d.poolStatus=gv('poolStatus');d.councilCompliance=gv('councilCompliance');}
     if(svc.indexOf('Shower screens')!==-1){d.showerScreenType=gv('showerScreenType');d.showerConfig=gv('showerConfig');d.numberOfShowerScreens=gv('numberOfShowerScreens');}
@@ -1421,11 +1499,40 @@ fbq('track', 'PageView');
     return d;
   }
 
+  // === NOT-SURE TRIAGE ===
+  // Counts every "Not sure" / "Not sure yet" value in the payload. When the
+  // count hits the threshold, the lead is flagged `manual_review: true` so the
+  // backend routes to a human site-measure rather than an auto estimate.
+  function countNotSure(d){
+    var keys = [
+      'fenceMaterial','fenceHeight','fenceLengthRange','fenceRemoval',
+      'sideGateMaterial','drivewayGateType','drivewayGateMaterial',
+      'poolFenceType','poolFenceLength','poolStatus','councilCompliance',
+      'showerScreenType','showerConfig',
+      'groundConditions','siteAccess'
+    ];
+    var n = 0;
+    keys.forEach(function(k){
+      var v = (d[k] || '').toString().toLowerCase();
+      if (v.indexOf('not sure') !== -1) n++;
+    });
+    return n;
+  }
+
   // === PARTIAL CAPTURE ===
   function firePartialCapture(){
+    if (usingN8n()) {
+      n8nPost({
+        _event: 'partial',
+        fullName: gv('fullName'),
+        phone: gv('phone'),
+        email: gv('email')
+      }).catch(function(){});
+      return;
+    }
     var parts = gv('fullName').split(' ');
     ghlPost('/contacts/upsert', {
-      locationId: GHL.locationId,
+      locationId: AONE_CONFIG.ghlLocationId,
       firstName: parts[0] || '',
       lastName: parts.slice(1).join(' ') || '',
       name: gv('fullName'),
@@ -1440,72 +1547,87 @@ fbq('track', 'PageView');
   window.submitForm = function(){
     if(!validateStep(5))return;
 
-    // Honeypot check
     if(document.getElementById('website_url').value !== ''){return;}
 
-    var d=collectFormData(),sp=document.getElementById('spinner');sp.classList.add('active');
+    var d = collectFormData();
+    d.notSureCount = countNotSure(d);
+    d.manualReview = d.notSureCount >= AONE_CONFIG.notSureThreshold;
 
-    // reCAPTCHA v3 (non-blocking — submits even if reCAPTCHA fails)
+    var sp = document.getElementById('spinner');
+    sp.classList.add('active');
+
+    function fire(){
+      if (usingN8n()) { submitViaN8n(d, sp); }
+      else            { submitViaDirectGHL(d, sp); }
+    }
+
     try {
       if (typeof grecaptcha !== 'undefined' && grecaptcha.execute) {
         grecaptcha.ready(function(){
-          grecaptcha.execute('6LdyYaYsAAAAAA0NJHcOGoogfn_9BzP6cDRw-mrw',{action:'submit'}).then(function(token){
-            d.recaptchaToken = token;
-            processSubmission(d,sp);
-          }).catch(function(){
-            processSubmission(d,sp);
-          });
+          grecaptcha.execute(AONE_CONFIG.recaptchaSiteKey, { action: 'submit' })
+            .then(function(token){ d.recaptchaToken = token; fire(); })
+            .catch(function(){ fire(); });
         });
-      } else {
-        processSubmission(d,sp);
-      }
-    } catch(e) {
-      processSubmission(d,sp);
-    }
+      } else { fire(); }
+    } catch(e) { fire(); }
   };
 
-  function processSubmission(d,sp){
-    var tm={'Within 2 weeks':'Hot Lead','Within a month':'Warm Lead','Within 1-2 months':'Nurture','3+ months':'Long-Term Nurture'};
-    var tags=['Website Form - Complete',tm[d.timeline]||'Nurture'];
-    if(d.leadSource)tags.push('Source - '+d.leadSource);
-    if(d.fenceMaterial)tags.push('Material - '+d.fenceMaterial);
-    if(d.fenceMaterial === 'Aluminium (standard)')tags.push('Custom Pricing Required - Aluminium');
+  function submitViaN8n(d, sp){
+    n8nPost(d)
+      .then(function(){ onSubmitSuccess(d); })
+      .catch(function(){ onSubmitSuccess(d); })
+      .finally(function(){ sp.classList.remove('active'); });
+  }
+
+  function submitViaDirectGHL(d, sp){
+    var tm = {
+      'Within 2 weeks':'Hot Lead',
+      'Within a month':'Warm Lead',
+      'Within 1-2 months':'Nurture',
+      '3+ months':'Long-Term Nurture'
+    };
+    var tags = ['Website Form - Complete', tm[d.timeline] || 'Nurture'];
+    if (d.leadSource) tags.push('Source - ' + d.leadSource);
+    if (d.fenceMaterial) tags.push('Material - ' + d.fenceMaterial);
+    if (d.fenceMaterial === 'Aluminium (standard)') tags.push('Custom Pricing Required - Aluminium');
+    if (d.manualReview) tags.push('Manual Review Required');
 
     var parts = d.fullName.split(' ');
     var customFields = [];
-    function cf(k,v){if(v)customFields.push({key:k,field_value:v});}
-    cf('property_type',d.propertyType);
-    cf('property_owner_status',d.propertyOwner);
-    cf('service_types_requested',d.serviceTypes.join(', '));
-    cf('fence_material',d.fenceMaterial);
-    cf('fence_height',d.fenceHeight);
-    cf('fence_length_range',d.fenceLength);
-    cf('existing_fence_removal',d.fenceRemoval);
-    cf('partial_removal_metres',d.partialRemovalMetres);
-    cf('gate_type',d.sideGate==='Yes'?'Side/Pedestrian gate':'');
-    cf('gate_material',d.sideGateMaterial);
-    cf('number_of_gates',d.numberOfSideGates);
-    cf('driveway_gate_type',d.drivewayGateType);
-    cf('driveway_gate_material',d.drivewayGateMaterial);
-    cf('pool_fence_type',d.poolFenceType);
-    cf('pool_fence_length_range',d.poolFenceLength);
-    cf('pool_status',d.poolStatus);
-    cf('council_compliance_required',d.councilCompliance);
-    cf('shower_screen_type',d.showerScreenType);
-    cf('shower_screen_configuration',d.showerConfig);
-    cf('number_of_shower_screens',d.numberOfShowerScreens);
-    cf('ground_conditions',d.groundConditions);
-    cf('site_access_difficulty',d.siteAccess);
-    cf('project_timeline',d.timeline);
-    cf('lead_source',d.leadSource);
-    cf('additional_notes',d.additionalNotes);
+    function cf(k,v){ if(v) customFields.push({ key: k, field_value: v }); }
+    cf('property_type', d.propertyType);
+    cf('property_owner_status', d.propertyOwner);
+    cf('service_types_requested', d.serviceTypes.join(', '));
+    cf('fence_material', d.fenceMaterial);
+    cf('fence_height', d.fenceHeight);
+    cf('fence_length_range', d.fenceLengthRange);
+    cf('existing_fence_removal', d.fenceRemoval);
+    cf('partial_removal_metres', d.partialRemovalMetres);
+    cf('gate_type', d.sideGate === 'Yes' ? 'Side/Pedestrian gate' : '');
+    cf('gate_material', d.sideGateMaterial);
+    cf('number_of_gates', d.numberOfSideGates);
+    cf('driveway_gate_type', d.drivewayGateType);
+    cf('driveway_gate_material', d.drivewayGateMaterial);
+    cf('pool_fence_type', d.poolFenceType);
+    cf('pool_fence_length_range', d.poolFenceLength);
+    cf('pool_status', d.poolStatus);
+    cf('council_compliance_required', d.councilCompliance);
+    cf('shower_screen_type', d.showerScreenType);
+    cf('shower_screen_configuration', d.showerConfig);
+    cf('number_of_shower_screens', d.numberOfShowerScreens);
+    cf('ground_conditions', d.groundConditions);
+    cf('site_access_difficulty', d.siteAccess);
+    cf('project_timeline', d.timeline);
+    cf('lead_source', d.leadSource);
+    cf('additional_notes', d.additionalNotes);
 
     var contactId = null;
     var est = calcEstimate(d);
+
     ghlPost('/contacts/upsert', {
-      locationId: GHL.locationId,
-      firstName: parts[0]||'',
-      lastName: parts.slice(1).join(' ')||'',
+      locationId: AONE_CONFIG.ghlLocationId,
+      firstName: parts[0] || '',
+      lastName: parts.slice(1).join(' ') || '',
       name: d.fullName,
       phone: d.phone,
       email: d.email,
@@ -1514,31 +1636,33 @@ fbq('track', 'PageView');
       state: d.state,
       country: 'AU',
       tags: tags,
-      source: d.leadSource||'Website Estimate Form',
+      source: d.leadSource || 'Website Estimate Form',
       customFields: customFields
     })
     .then(function(res){
       contactId = res.contact && res.contact.id;
-      if(contactId){
-        return ghlPost('/opportunities/',{
-          pipelineId:GHL.pipelineId,
-          locationId:GHL.locationId,
-          name:d.fullName+' - '+d.serviceTypes.join(', '),
-          pipelineStageId:GHL.stageId,
-          status:'open',
-          contactId:contactId,
-          monetaryValue:est.total
+      if (contactId) {
+        return ghlPost('/opportunities/', {
+          pipelineId: AONE_CONFIG.ghlPipelineId,
+          locationId: AONE_CONFIG.ghlLocationId,
+          name: d.fullName + ' - ' + d.serviceTypes.join(', '),
+          pipelineStageId: AONE_CONFIG.ghlStageId,
+          status: 'open',
+          contactId: contactId,
+          monetaryValue: est.total
         });
       }
     })
     .then(function(){
-      if(contactId){
+      if (contactId && !d.manualReview) {
         addEstimateNote(contactId, d, est);
         sendEstimateEmail(contactId, d, est);
+      } else if (contactId && d.manualReview) {
+        addManualReviewNote(contactId, d);
       }
-      showConf(d.fullName);
+      onSubmitSuccess(d);
     })
-    .catch(function(){showConf(d.fullName);})
+    .catch(function(){ onSubmitSuccess(d); })
     .finally(function(){sp.classList.remove('active');});
   }
 
@@ -1553,8 +1677,11 @@ fbq('track', 'PageView');
     var isRaked = !d.groundConditions || d.groundConditions !== 'Flat';
 
     // Fencing
-    if(d.serviceTypes.indexOf('New fence installation') !== -1 && d.fenceLength){
-      var len = parseFloat(d.fenceLength) || 0;
+    if(d.serviceTypes.indexOf('New fence installation') !== -1){
+      var rangeMid = { 'Under 10 metres': 8, '10 - 20 metres': 15, '20 - 40 metres': 30, '40 - 60 metres': 50, '60 - 100 metres': 80, '100+ metres': 120 };
+      var exactLen = parseFloat(d.fenceLength);
+      var len = isFinite(exactLen) && exactLen > 0 ? exactLen : (rangeMid[d.fenceLengthRange] || 0);
+      if (!exactLen && rangeMid[d.fenceLengthRange]) assumptions.push('Fence length estimated from range "' + d.fenceLengthRange + '", final pricing confirmed at on-site measure.');
       var h = d.fenceHeight || '1.8m';
       var mat = d.fenceMaterial || 'Colorbond';
       var rate = 0;
@@ -1778,10 +1905,35 @@ fbq('track', 'PageView');
     }).catch(function(){});
   }
 
-  function showConf(name){
-    var base = window.location.pathname.replace(/\/index\.html$/,'').replace(/\/$/,'');
-    window.location.href = base + '/thank-you';
+  // === MANUAL-REVIEW NOTE (triage when too many fields are "Not sure") ===
+  function addManualReviewNote(contactId, d){
+    var body = '<p>Lead routed to manual review: ' + d.notSureCount + ' fields marked "Not sure".</p>'
+      + '<p>Customer requested a free on-site measure via the estimate form. Book a site visit and send a formal quote after inspection.</p>'
+      + '<p>Form notes: ' + (d.additionalNotes || 'none') + '</p>';
+    ghlPost('/contacts/' + contactId + '/notes', { body: body }).catch(function(){});
   }
+
+  // === SUCCESS HANDLER (fires whether or not the GHL/n8n chain completed) ===
+  function onSubmitSuccess(d){
+    formSubmitted = true;
+    track('form_submit', {
+      services: (d.serviceTypes || []).join(','),
+      timeline: d.timeline || '',
+      manual_review: !!d.manualReview,
+      not_sure_count: d.notSureCount || 0
+    });
+    var base = window.location.pathname.replace(/\/index\.html$/, '').replace(/\/$/, '');
+    var qs = d.manualReview ? '?track=manual' : '';
+    window.location.href = base + '/thank-you' + qs;
+  }
+
+  // === FORM ABANDONMENT ===
+  // Fires only if the customer began step 1 but never submitted.
+  window.addEventListener('beforeunload', function(){
+    if (formStarted && !formSubmitted) {
+      track('form_abandon', { step: currentStep });
+    }
+  });
 
   updateProgress();
 })();
